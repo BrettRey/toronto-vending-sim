@@ -1,0 +1,536 @@
+<title>Sidewalk Vend</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #eef1f5; --panel: #ffffff; --panel-2: #f6f8fb; --line: #d7dde6; --line-2: #e6ebf1;
+    --ink: #16202e; --muted: #5b6675; --faint: #8c96a5;
+    --accent: #1e4fa3; --accent-ink: #ffffff; --accent-soft: #e4ecf9;
+    --good: #1f7a3f; --warn: #b7791f; --warn-soft: #fbf1dc; --crit: #c0392b; --crit-soft: #fae3df;
+    --series-cash: #2a78d6; --series-units: #1baf7a;
+    /* the machine keeps its own colours in both themes */
+    --bezel: #262b36; --bezel-2: #323847; --bezel-ink: #f3f5f8; --bezel-muted: #aab2c0;
+    --window: #fff6e3; --window-ink: #26221a; --window-muted: #8a8272; --tile: #ffffff; --tile-line: #e3d9c3; --tile-empty: #f7efdc;
+    --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #131821; --panel: #1b222e; --panel-2: #212a38; --line: #303a4a; --line-2: #283142;
+      --ink: #e8ecf2; --muted: #97a2b2; --faint: #6f7a8a;
+      --accent: #6fa0f0; --accent-ink: #0f1a2e; --accent-soft: #24344f;
+      --good: #4cc27a; --warn: #e0a83a; --warn-soft: #3a2f16; --crit: #ee6b5c; --crit-soft: #3d1f1b;
+      --series-cash: #3987e5; --series-units: #199e70;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131821; --panel: #1b222e; --panel-2: #212a38; --line: #303a4a; --line-2: #283142;
+    --ink: #e8ecf2; --muted: #97a2b2; --faint: #6f7a8a;
+    --accent: #6fa0f0; --accent-ink: #0f1a2e; --accent-soft: #24344f;
+    --good: #4cc27a; --warn: #e0a83a; --warn-soft: #3a2f16; --crit: #ee6b5c; --crit-soft: #3d1f1b;
+    --series-cash: #3987e5; --series-units: #199e70;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+  button, input, select { font: inherit; color: inherit; }
+  h1, h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
+  h2 { font-size: 19px; font-weight: 600; letter-spacing: 0.01em; text-transform: uppercase; color: var(--muted); }
+  a { color: var(--accent); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---- top bar */
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: 14px 22px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand h1 { font-size: 30px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1; }
+  .brand .sub { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; flex: 1; }
+  .strip .lab { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .strip .val { font-family: var(--display); font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .strip .val.num { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+  .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.crit { background: var(--crit-soft); color: var(--crit); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); cursor: pointer; font-weight: 500; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.small { padding: 4px 9px; font-size: 12px; }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+
+  /* ---- layout */
+  .layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(330px, 1fr); gap: 22px; padding: 22px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .panel + .panel { margin-top: 16px; }
+  .panel h2 { margin-bottom: 10px; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .panel-head h2 { margin: 0; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+
+  /* ---- the machine */
+  .machine { background: var(--bezel); border-radius: 12px; padding: 14px 14px 12px; color: var(--bezel-ink); box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+  .marquee { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 2px 4px 12px; }
+  .marquee .name { font-family: var(--display); font-size: 22px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+  .marquee .spec { color: var(--bezel-muted); font-size: 12px; text-align: right; }
+  .window { background: var(--window); color: var(--window-ink); border-radius: 8px; padding: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); gap: 8px; }
+  .slot { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 7px 7px 6px; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 5px; text-align: left; cursor: pointer; color: var(--window-ink); }
+  .slot:hover { border-color: var(--accent); }
+  .slot.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .slot .code { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.04em; color: var(--window-muted); }
+  .slot .pname { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .price { font-family: var(--mono); font-size: 12px; }
+  .slot .fill { height: 5px; background: var(--tile-empty); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+  .slot .fill i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .slot .units { font-family: var(--mono); font-size: 11px; color: var(--window-muted); }
+  .slot.empty { background: var(--tile-empty); border-style: dashed; }
+  .slot.empty .pname { color: var(--window-muted); font-style: italic; }
+  .slot.out .fill i { background: var(--crit); }
+  .slot.out .units { color: var(--crit); font-weight: 500; }
+  .slot.low .fill i { background: var(--warn); }
+  .slot .flag { position: absolute; top: 5px; right: 6px; font-family: var(--display); font-weight: 700; font-size: 12px; padding: 0 5px; border-radius: 3px; }
+  .slot .flag.exp { background: var(--warn); color: #fff; }
+  .slot .flag.q { background: var(--accent); color: #fff; }
+  .slot.queued { box-shadow: inset 0 0 0 2px var(--accent-soft); }
+  .keyrow { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px 4px 0; color: var(--bezel-muted); font-size: 12px; }
+  .keyrow b { color: var(--bezel-ink); font-weight: 600; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+
+  /* ---- editor */
+  .field { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+  .field label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .field select, .field input { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+  .field input.num { text-align: right; }
+  .pinfo { grid-column: 2; font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .pending-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pending-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; background: var(--panel-2); border-radius: 4px; font-size: 13px; }
+  .pending-list .code { font-family: var(--display); font-weight: 700; letter-spacing: 0.04em; margin-right: 6px; color: var(--muted); }
+  .receipt { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--panel-2); font-size: 12.5px; color: var(--muted); }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+  /* ---- results */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .kpi { padding: 8px 10px; background: var(--panel-2); border-radius: var(--radius); }
+  .kpi .lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .kpi .val { font-family: var(--mono); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .kpi .val.pos { color: var(--good); } .kpi .val.neg { color: var(--crit); }
+  .chart { position: relative; margin-top: 8px; }
+  .chart h3 { font-family: var(--body); font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart .tip { position: absolute; pointer-events: none; padding: 5px 8px; background: var(--ink); color: var(--bg); font-size: 12px; border-radius: 4px; white-space: nowrap; transform: translate(-50%, -110%); display: none; }
+  .chart text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+  .chart .grid-line { stroke: var(--line-2); stroke-width: 1; }
+  .chart .empty-note { fill: var(--faint); font-family: var(--body); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 5px 6px; text-align: left; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  .tablewrap { overflow-x: auto; max-height: 300px; overflow-y: auto; }
+  .log { padding: 0 22px 22px; }
+  .log .panel { padding-bottom: 8px; }
+  .note { padding: 0 22px 28px; color: var(--muted); font-size: 12.5px; max-width: 72ch; }
+
+  /* ---- dialog */
+  dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 20px 22px; width: min(560px, 92vw); }
+  dialog::backdrop { background: rgba(10, 14, 22, 0.55); }
+  dialog h2 { color: var(--ink); font-size: 24px; text-transform: none; margin-bottom: 12px; }
+  .opt-desc { grid-column: 2; font-size: 12px; color: var(--muted); }
+</style>
+
+<header class="topbar">
+  <div class="brand"><h1>Sidewalk Vend</h1><span class="sub">One machine, Toronto. A simulation, not a business.</span></div>
+  <div class="strip">
+    <div><span class="lab">Day</span><span class="val" id="s-day">0</span></div>
+    <div><span class="lab">Date</span><span class="val" id="s-date">–</span></div>
+    <div><span class="lab">Weather</span><span class="val" id="s-weather">–</span></div>
+    <div><span class="lab">Cash</span><span class="val num" id="s-cash">$0.00</span></div>
+    <div><span class="lab">Machine</span><span class="val" id="s-machine"></span></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="run1">Run 1 day</button>
+    <button class="btn primary" id="run7">Run 7 days</button>
+    <button class="btn quiet" id="newgame">New game…</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section>
+    <div class="machine">
+      <div class="marquee"><div class="name" id="m-name"></div><div class="spec" id="m-spec"></div></div>
+      <div class="window"><div class="grid" id="grid"></div></div>
+      <div class="keyrow">
+        <span><b>Click a slot</b> to stock or reprice it. Changes are queued until you make the visit.</span>
+        <span><span class="swatch" style="background: var(--accent)"></span>stock level</span>
+        <span><span class="swatch" style="background: var(--warn)"></span>low or expiring</span>
+        <span><span class="swatch" style="background: var(--crit)"></span>sold out</span>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <section class="panel">
+      <div class="panel-head"><h2 id="ed-title">Slot</h2><span class="hint" id="ed-current"></span></div>
+      <div class="field">
+        <label for="ed-product">Product</label>
+        <select id="ed-product"></select>
+        <span class="pinfo" id="ed-pinfo"></span>
+        <label for="ed-price">Price</label>
+        <input class="num" id="ed-price" type="number" step="0.25" min="0.25">
+        <label for="ed-fill">Fill to</label>
+        <input class="num" id="ed-fill" type="number" step="1" min="0">
+      </div>
+      <div class="row">
+        <button class="btn primary" id="ed-queue">Queue this change</button>
+        <button class="btn" id="ed-empty">Empty the slot</button>
+        <span class="hint" id="ed-msg"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Next visit</h2><span class="hint">Trip fee <span class="num" id="v-fee"></span></span></div>
+      <ul class="pending-list" id="pending"></ul>
+      <label class="checkline"><input type="checkbox" id="v-refill"> Top up every stocked slot</label>
+      <div class="row">
+        <button class="btn primary" id="v-go">Make the visit</button>
+        <span class="hint">about <span class="num" id="v-est"></span></span>
+        <button class="btn quiet small" id="v-clear">Discard queue</button>
+      </div>
+      <div class="receipt" id="v-receipt" hidden></div>
+    </section>
+
+    <section class="panel">
+      <h2>Results so far</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="chart" id="c-cash"><h3>Cash on hand, by day</h3><div class="tip"></div></div>
+      <div class="chart" id="c-units"><h3>Units sold, by day</h3><div class="tip"></div></div>
+      <div class="panel-head" style="margin-top:14px"><h2 style="font-size:15px">By product</h2><span class="hint">net after tax; contribution = net − cost of goods</span></div>
+      <div class="tablewrap" id="products"></div>
+    </section>
+  </aside>
+</main>
+
+<section class="log">
+  <div class="panel">
+    <div class="panel-head"><h2>Day log</h2><span class="hint">newest first</span></div>
+    <div class="tablewrap" id="daylog"></div>
+  </div>
+</section>
+
+<p class="note">Every number behind this page (foot traffic, wholesale costs, prices, rents, breakdown rates, the weather table) is a placeholder written to make the game run, not a measurement. Treat results as game outcomes. Source code and the calibration queue: <a href="https://github.com/BrettRey/toronto-vending-sim">BrettRey/toronto-vending-sim</a>. Progress is saved in this browser.</p>
+
+<dialog id="dlg">
+  <h2>New game</h2>
+  <div class="field">
+    <label for="ng-loc">Location</label><select id="ng-loc"></select><span class="opt-desc" id="ng-loc-desc"></span>
+    <label for="ng-mach">Machine</label><select id="ng-mach"></select><span class="opt-desc" id="ng-mach-desc"></span>
+    <label for="ng-date">Start date</label><input id="ng-date" type="date">
+    <label for="ng-cash">Starting cash</label><input class="num" id="ng-cash" type="number" step="100">
+    <label for="ng-seed">Seed</label><input class="num" id="ng-seed" type="number" step="1">
+  </div>
+  <label class="checkline"><input type="checkbox" id="ng-starter" checked> Stock the starter assortment on day 0</label>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" id="ng-cancel">Cancel</button>
+    <button class="btn primary" id="ng-start">Start</button>
+  </div>
+</dialog>
+
+<script>
+/*__DATA__*/
+/*__ENGINE__*/
+(function () {
+  "use strict";
+  const V = globalThis.VendSim;
+  const SAVE_KEY = "sidewalk-vend-v1";
+  const cad = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
+  const $ = (id) => document.getElementById(id);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const S = { sim: null, pending: null, selected: 1, lastReceipt: null };
+  const freshPending = () => ({ set: {}, remove: [], refill: false });
+
+  // ---------------------------------------------------------------- helpers
+  function prettyDate(iso) { const [y, m, d] = iso.split("-").map(Number); const dow = V.DOW[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7]; return `${dow} ${d} ${MONTHS[m - 1]} ${y}`; }
+  function cols() { const n = S.sim.sc.machine.slots; return n % 8 === 0 ? 8 : (n % 6 === 0 ? 6 : 8); }
+  function code(index) { const c = cols(); const r = Math.floor((index - 1) / c), k = (index - 1) % c; return String.fromCharCode(65 + r) + (k + 1); }
+  function shortName(p) { return p.name.split(",")[0].replace(/ \(.*\)$/, ""); }
+  function slotUnits(s) { return V.slotUnits(s); }
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ sim: S.sim.toJSON(), pending: S.pending, selected: S.selected, lastReceipt: S.lastReceipt })); } catch (e) { /* storage unavailable; play on */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false;
+      const j = JSON.parse(raw);
+      S.sim = V.Simulation.fromJSON(DATA, j.sim); S.pending = j.pending || freshPending(); S.selected = j.selected || 1; S.lastReceipt = j.lastReceipt || null;
+      return true;
+    } catch (e) { return false; }
+  }
+  function newGame(overrides, starter) {
+    S.sim = new V.Simulation(V.buildScenario(DATA, overrides));
+    S.pending = freshPending(); S.selected = 1; S.lastReceipt = null;
+    if (starter) {
+      const first = DATA.plan.visits.find((v) => v.day === 0) || {};
+      const set = {};
+      Object.entries(first.set || {}).forEach(([k, v]) => { if (Number(k) <= S.sim.sc.machine.slots) { const p = S.sim.sc.catalogue[v.product]; if (p && !(p.refrigerate && !S.sim.sc.machine.refrigerated)) set[k] = v; } });
+      S.lastReceipt = S.sim.applyVisit({ set });
+      S.lastReceipt.starter = true;
+    }
+  }
+
+  // ---------------------------------------------------------------- status
+  function renderStatus() {
+    const sim = S.sim, L = sim.ledger, last = L[L.length - 1];
+    $("s-day").textContent = sim.day;
+    $("s-date").textContent = prettyDate(sim.today);
+    $("s-weather").textContent = last ? `${last.tempC.toFixed(0)} °C${last.precip ? ", wet" : ""}` : "not yet";
+    $("s-cash").textContent = cad.format(sim.cash);
+    const m = $("s-machine");
+    if (sim.down) { m.innerHTML = `<span class="chip crit">Down: ${sim.down}</span>`; }
+    else { const stocked = sim.slots.filter((s) => s.product).length, out = sim.slots.filter((s) => s.product && slotUnits(s) === 0).length;
+      m.innerHTML = out ? `<span class="chip warn">${out} of ${stocked} slots sold out</span>` : `<span class="chip ok">Running</span>`; }
+    $("m-name").textContent = sim.sc.location.name;
+    $("m-spec").textContent = `${sim.sc.machine.name}, ${sim.sc.machine.depth} deep`;
+    $("v-fee").textContent = cad.format(sim.sc.visitCost);
+  }
+
+  // ---------------------------------------------------------------- grid
+  function renderGrid() {
+    const sim = S.sim, grid = $("grid"); grid.style.setProperty("--cols", cols());
+    const rows = sim.stockTable(); const frag = document.createDocumentFragment();
+    rows.forEach((r) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "slot"; b.dataset.slot = r.slot;
+      const q = S.pending.set[r.slot], rm = S.pending.remove.includes(r.slot);
+      let cls = [];
+      if (!r.product) cls.push("empty");
+      else if (r.units === 0) cls.push("out");
+      else if (r.units <= Math.max(1, Math.floor(r.capacity * 0.25))) cls.push("low");
+      if (r.slot === S.selected) cls.push("selected");
+      if (q || rm) cls.push("queued");
+      b.className += " " + cls.join(" ");
+      const expiring = r.lastDay !== null && r.lastDay - sim.day <= 1 && r.units > 0;
+      const pct = r.capacity ? Math.round(100 * r.units / r.capacity) : 0;
+      const label = r.product ? shortName(sim.sc.catalogue[r.product]) : "empty";
+      b.innerHTML = `<span class="code">${code(r.slot)}</span><span class="pname">${label}</span>` +
+        (r.product ? `<span class="price">${cad.format(r.price)}</span><span class="fill"><i style="width:${pct}%"></i></span><span class="units">${r.units}/${r.capacity}</span>` : `<span class="units">${r.capacity} deep</span>`) +
+        (rm ? `<span class="flag q">→ empty</span>` : q ? `<span class="flag q">→ ${shortName(sim.sc.catalogue[q.product])}</span>` : expiring ? `<span class="flag exp" title="last sellable day is today or tomorrow">!</span>` : "");
+      b.title = r.product ? `${r.name}, ${cad.format(r.price)}, ${r.units} of ${r.capacity}` + (r.lastDay !== null ? `, last sellable day ${sim.dateOfDay(r.lastDay)}` : "") : "Empty slot";
+      b.addEventListener("click", () => { S.selected = r.slot; renderGrid(); renderEditor(); save(); });
+      frag.appendChild(b);
+    });
+    grid.replaceChildren(frag);
+  }
+
+  // ---------------------------------------------------------------- editor
+  function productOptions(sel, current) {
+    const cats = {}; Object.values(S.sim.sc.catalogue).forEach((p) => { (cats[p.category] ||= []).push(p); });
+    sel.replaceChildren();
+    Object.entries(cats).forEach(([cat, ps]) => {
+      const g = document.createElement("optgroup"); g.label = cat.replace("-", " ");
+      ps.forEach((p) => { const o = document.createElement("option"); o.value = p.id; o.textContent = `${p.name} · ${cad.format(p.defaultPrice)}`; if (p.refrigerate && !S.sim.sc.machine.refrigerated) { o.disabled = true; o.textContent += " (needs fridge)"; } g.appendChild(o); });
+      sel.appendChild(g);
+    });
+    if (current) sel.value = current;
+    if (!sel.value) { const first = sel.querySelector("option:not([disabled])"); if (first) sel.value = first.value; }
+  }
+  function renderEditor() {
+    const sim = S.sim, slot = sim.slot(S.selected), sel = $("ed-product");
+    $("ed-title").textContent = `Slot ${code(S.selected)}`;
+    const q = S.pending.set[S.selected];
+    $("ed-current").textContent = slot.product ? `now: ${shortName(sim.sc.catalogue[slot.product])}, ${cad.format(slot.price)}, ${slotUnits(slot)} left` : "now: empty";
+    productOptions(sel, q ? q.product : slot.product);
+    const p = sim.sc.catalogue[sel.value];
+    $("ed-price").value = (q ? q.price : (slot.product === sel.value && slot.price ? slot.price : p.defaultPrice)).toFixed(2);
+    $("ed-fill").max = sim.capacity(p); $("ed-fill").value = q && q.fill != null ? q.fill : sim.capacity(p);
+    updatePinfo();
+    $("ed-msg").textContent = "";
+  }
+  function updatePinfo() {
+    const sim = S.sim, p = sim.sc.catalogue[$("ed-product").value]; if (!p) return;
+    $("ed-pinfo").textContent = `cost ${cad.format(p.unitCost)} each · reference price ${cad.format(p.defaultPrice)} · keeps ${p.shelfLifeDays} days · up to ${sim.capacity(p)} per slot${p.refrigerate ? " · needs fridge" : ""}`;
+    $("ed-fill").max = sim.capacity(p);
+  }
+  $("ed-product").addEventListener("change", () => { const p = S.sim.sc.catalogue[$("ed-product").value]; $("ed-price").value = p.defaultPrice.toFixed(2); $("ed-fill").value = S.sim.capacity(p); updatePinfo(); });
+  $("ed-queue").addEventListener("click", () => {
+    const pid = $("ed-product").value, price = Number($("ed-price").value), fill = Number($("ed-fill").value), p = S.sim.sc.catalogue[pid];
+    if (!(price > 0)) { $("ed-msg").textContent = "Price must be above zero."; return; }
+    if (!(fill >= 0 && fill <= S.sim.capacity(p))) { $("ed-msg").textContent = `Fill must be 0 to ${S.sim.capacity(p)}.`; return; }
+    S.pending.set[S.selected] = { product: pid, price, fill };
+    S.pending.remove = S.pending.remove.filter((i) => i !== S.selected);
+    $("ed-msg").textContent = `Queued for ${code(S.selected)}.`;
+    renderGrid(); renderPending(); save();
+  });
+  $("ed-empty").addEventListener("click", () => {
+    delete S.pending.set[S.selected];
+    if (S.sim.slot(S.selected).product && !S.pending.remove.includes(S.selected)) S.pending.remove.push(S.selected);
+    $("ed-msg").textContent = S.sim.slot(S.selected).product ? `${code(S.selected)} will be emptied; leftover stock is written off.` : "Already empty.";
+    renderGrid(); renderPending(); save();
+  });
+
+  // ---------------------------------------------------------------- visit
+  function visitEstimate() {
+    const sim = S.sim; let cost = sim.sc.visitCost;
+    if (sim.down) cost += sim.down === "jam" ? sim.sc.jamRepairCost : sim.sc.vandalismRepairCost;
+    const seen = new Set();
+    Object.entries(S.pending.set).forEach(([k, v]) => { const slot = sim.slot(k), p = sim.sc.catalogue[v.product]; seen.add(Number(k));
+      const have = slot.product === p.id ? slotUnits(slot) : 0; cost += Math.max(0, Math.min(v.fill, sim.capacity(p)) - have) * p.unitCost; });
+    if (S.pending.refill) sim.slots.forEach((slot) => { if (slot.product && !seen.has(slot.index) && !S.pending.remove.includes(slot.index)) { const p = sim.sc.catalogue[slot.product]; cost += Math.max(0, sim.capacity(p) - slotUnits(slot)) * p.unitCost; } });
+    return cost;
+  }
+  function renderPending() {
+    const ul = $("pending"); ul.replaceChildren();
+    const items = [];
+    S.pending.remove.forEach((i) => items.push({ i, text: "empty the slot" }));
+    Object.entries(S.pending.set).forEach(([k, v]) => items.push({ i: Number(k), text: `${shortName(S.sim.sc.catalogue[v.product])} at ${cad.format(v.price)}, fill to ${v.fill}` }));
+    items.sort((a, b) => a.i - b.i);
+    if (!items.length && !S.pending.refill) { const li = document.createElement("li"); li.innerHTML = `<span class="hint">Nothing queued${S.sim.down ? "; the visit will still repair the machine" : ""}.</span>`; ul.appendChild(li); }
+    items.forEach((it) => { const li = document.createElement("li"); li.innerHTML = `<span><span class="code">${code(it.i)}</span>${it.text}</span>`; const x = document.createElement("button"); x.className = "btn quiet small"; x.textContent = "remove"; x.addEventListener("click", () => { delete S.pending.set[it.i]; S.pending.remove = S.pending.remove.filter((n) => n !== it.i); renderGrid(); renderPending(); save(); }); li.appendChild(x); ul.appendChild(li); });
+    $("v-refill").checked = S.pending.refill;
+    $("v-est").textContent = cad.format(visitEstimate());
+    const r = $("v-receipt");
+    if (S.lastReceipt) {
+      const rc = S.lastReceipt, added = Object.values(rc.unitsAdded).reduce((a, b) => a + b, 0);
+      r.hidden = false;
+      r.textContent = `${rc.starter ? "Starter assortment stocked" : "Last visit"} on ${prettyDate(rc.date)}: trip ${cad.format(rc.visitCost)}, stock ${cad.format(rc.purchases)} (${added} units)` + (rc.repairs ? `, repairs ${cad.format(rc.repairs)}` : "") + (rc.writeoffs ? `, written off ${cad.format(rc.writeoffs)}` : "") + ".";
+    } else r.hidden = true;
+  }
+  $("v-refill").addEventListener("change", (e) => { S.pending.refill = e.target.checked; renderPending(); save(); });
+  $("v-clear").addEventListener("click", () => { S.pending = freshPending(); renderAll(); save(); });
+  $("v-go").addEventListener("click", () => {
+    try {
+      const actions = { remove: S.pending.remove.slice(), set: Object.assign({}, S.pending.set), refill: S.pending.refill };
+      S.lastReceipt = S.sim.applyVisit(actions); S.pending = freshPending();
+      renderAll(); save();
+    } catch (e) { $("ed-msg").textContent = e.message; }
+  });
+
+  // ---------------------------------------------------------------- run
+  function runDays(n) { for (let i = 0; i < n; i++) S.sim.step(); renderAll(); save(); }
+  $("run1").addEventListener("click", () => runDays(1));
+  $("run7").addEventListener("click", () => runDays(7));
+
+  // ---------------------------------------------------------------- results
+  function kpi(lab, val, cls) { return `<div class="kpi"><div class="lab">${lab}</div><div class="val ${cls || ""}">${val}</div></div>`; }
+  function renderResults() {
+    const sim = S.sim, s = sim.summarize(), L = sim.ledger, last = L[L.length - 1];
+    $("kpis").innerHTML =
+      kpi("Profit so far", (s.profit >= 0 ? "+" : "") + cad.format(s.profit), s.profit > 0 ? "pos" : s.profit < 0 ? "neg" : "") +
+      kpi("Stock on hand, at cost", cad.format(s.stockOnHandAtCost)) +
+      kpi("Units per day", s.days ? s.avgUnitsPerDay : "–") +
+      kpi("Sold today", last ? last.units : "–") +
+      kpi("Walked away", s.lostStoppers) +
+      kpi("Days down", s.daysDown, s.daysDown ? "neg" : "");
+    drawLine($("c-cash"), L.map((r) => r.cashEnd), sim.sc.startingCash, (r) => cad.format(r.cashEnd));
+    drawBars($("c-units"), L.map((r) => r.units), (r) => `${r.units} units`);
+    const t = $("products");
+    if (!s.products.length) { t.innerHTML = `<p class="hint">No sales yet. Make a visit and run some days.</p>`; }
+    else {
+      t.innerHTML = `<table><thead><tr><th>product</th><th class="num">units</th><th class="num">net</th><th class="num">contribution</th><th class="num">spoiled</th></tr></thead><tbody>` +
+        s.products.map((p) => `<tr><td>${shortName(sim.sc.catalogue[p.product])}</td><td class="num">${p.units}</td><td class="num">${cad.format(p.net)}</td><td class="num">${cad.format(p.contribution)}</td><td class="num">${p.spoiledUnits || ""}</td></tr>`).join("") + `</tbody></table>`;
+    }
+  }
+  function niceTicks(lo, hi, n) {
+    if (hi === lo) { hi = lo + 1; }
+    const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), norm = raw / mag;
+    const step = (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * mag;
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(v); return out;
+  }
+  const NS = "http://www.w3.org/2000/svg";
+  function el(name, attrs, text) { const e = document.createElementNS(NS, name); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); if (text != null) e.textContent = text; return e; }
+  function chartFrame(host, values) {
+    const W = 560, H = 170, m = { l: 52, r: 14, t: 10, b: 22 };
+    let svg = host.querySelector("svg"); if (svg) svg.remove();
+    svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }); host.appendChild(svg);
+    if (!values.length) { svg.appendChild(el("text", { x: W / 2, y: H / 2, "text-anchor": "middle", class: "empty-note" }, "No days run yet")); return null; }
+    return { svg, W, H, m, iw: W - m.l - m.r, ih: H - m.t - m.b };
+  }
+  function xLabels(f, n, sim) {
+    const days = Math.max(n - 1, 6); const step = days <= 14 ? 2 : days <= 45 ? 7 : days <= 120 ? 14 : 30;
+    for (let d = 0; d < n; d += step) { const x = f.m.l + f.iw * d / days; const dt = sim.dateOfDay(d).slice(5).split("-"); f.svg.appendChild(el("text", { x, y: f.H - 6, "text-anchor": d === 0 ? "start" : "middle" }, `${Number(dt[1])} ${MONTHS[Number(dt[0]) - 1]}`)); }
+  }
+  function attachHover(host, f, n, xOf, yOf, label) {
+    const tip = host.querySelector(".tip"), svg = f.svg;
+    const cross = el("line", { x1: 0, x2: 0, y1: f.m.t, y2: f.m.t + f.ih, stroke: "var(--faint)", "stroke-width": 1, style: "display:none" }); svg.appendChild(cross);
+    const dot = el("circle", { r: 4.5, fill: "var(--series-cash)", stroke: "var(--panel)", "stroke-width": 2, style: "display:none" }); svg.appendChild(dot);
+    svg.addEventListener("mousemove", (ev) => {
+      const rect = svg.getBoundingClientRect(); const px = (ev.clientX - rect.left) / rect.width * f.W;
+      const days = Math.max(n - 1, 6); let d = Math.round((px - f.m.l) / f.iw * days); d = Math.max(0, Math.min(n - 1, d));
+      const x = xOf(d), y = yOf(d);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.style.display = "";
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.style.display = "";
+      tip.style.display = "block"; tip.style.left = (x / f.W * rect.width) + "px"; tip.style.top = (y / f.H * rect.height) + "px";
+      tip.textContent = `${S.sim.ledger[d].date}: ${label(S.sim.ledger[d])}`;
+    });
+    svg.addEventListener("mouseleave", () => { cross.style.display = "none"; dot.style.display = "none"; tip.style.display = "none"; });
+  }
+  function drawLine(host, values, baseline, label) {
+    const f = chartFrame(host, values); if (!f) return;
+    const n = values.length, days = Math.max(n - 1, 6);
+    const lo = Math.min(baseline, ...values), hi = Math.max(baseline, ...values), pad = (hi - lo) * 0.08 || 50;
+    const ticks = niceTicks(lo - pad, hi + pad, 3), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const xOf = (d) => f.m.l + f.iw * d / days, yOf = (v) => f.m.t + f.ih * (1 - (v - y0) / (y1 - y0));
+    ticks.forEach((t) => { f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(t), y2: yOf(t), class: "grid-line" })); f.svg.appendChild(el("text", { x: f.m.l - 6, y: yOf(t) + 3, "text-anchor": "end" }, "$" + Math.round(t).toLocaleString("en-CA"))); });
+    f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(baseline), y2: yOf(baseline), stroke: "var(--faint)", "stroke-width": 1 }));
+    f.svg.appendChild(el("text", { x: f.W - f.m.r, y: yOf(baseline) - 3, "text-anchor": "end" }, "start"));
+    const pts = values.map((v, d) => `${xOf(d)},${yOf(v)}`);
+    f.svg.appendChild(el("path", { d: `M${xOf(0)},${yOf(y0)} L${pts.join(" L")} L${xOf(n - 1)},${yOf(y0)} Z`, fill: "var(--series-cash)", "fill-opacity": 0.1 }));
+    f.svg.appendChild(el("polyline", { points: pts.join(" "), fill: "none", stroke: "var(--series-cash)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    f.svg.appendChild(el("circle", { cx: xOf(n - 1), cy: yOf(values[n - 1]), r: 4, fill: "var(--series-cash)", stroke: "var(--panel)", "stroke-width": 2 }));
+    xLabels(f, n, S.sim);
+    attachHover(host, f, n, xOf, (d) => yOf(values[d]), label);
+  }
+  function drawBars(host, values, label) {
+    const f = chartFrame(host, values); if (!f) return;
+    const n = values.length, days = Math.max(n - 1, 6);
+    const ticks = niceTicks(0, Math.max(...values, 5) * 1.1, 3), y1 = ticks[ticks.length - 1];
+    const yOf = (v) => f.m.t + f.ih * (1 - v / y1), xOf = (d) => f.m.l + f.iw * d / days;
+    ticks.forEach((t) => { f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(t), y2: yOf(t), class: "grid-line" })); f.svg.appendChild(el("text", { x: f.m.l - 6, y: yOf(t) + 3, "text-anchor": "end" }, Math.round(t))); });
+    const bw = Math.max(2, Math.min(24, f.iw / (days + 1) - 2));
+    values.forEach((v, d) => { const h = yOf(0) - yOf(v); if (h <= 0) return; const r = Math.min(4, bw / 2);
+      f.svg.appendChild(el("path", { d: `M${xOf(d) - bw / 2},${yOf(0)} v${-(h - r)} a${r},${r} 0 0 1 ${r},${-r} h${bw - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${h - r} z`, fill: "var(--series-units)" })); });
+    xLabels(f, n, S.sim);
+    attachHover(host, f, n, xOf, (d) => yOf(values[d]), label);
+  }
+
+  // ---------------------------------------------------------------- log
+  function renderLog() {
+    const L = S.sim.ledger.slice(-14).reverse(), t = $("daylog");
+    if (!L.length) { t.innerHTML = `<p class="hint">Nothing yet. Run a day.</p>`; return; }
+    t.innerHTML = `<table><thead><tr><th>date</th><th class="num">°C</th><th>sky</th><th class="num">passed</th><th class="num">stopped</th><th class="num">sold</th><th class="num">gross</th><th class="num">spoiled</th><th class="num">visit</th><th class="num">cash</th><th>notes</th></tr></thead><tbody>` +
+      L.map((r) => `<tr><td>${r.date} ${r.weekday}</td><td class="num">${r.tempC.toFixed(0)}</td><td>${r.precip ? "wet" : "dry"}</td><td class="num">${r.footfall.toLocaleString("en-CA")}</td><td class="num">${r.stoppers}</td><td class="num">${r.units}</td><td class="num">${cad.format(r.grossSales)}</td><td class="num">${r.spoilageUnits || ""}</td><td class="num">${r.visitCost ? cad.format(r.visitCost + r.purchases + r.repairs) : ""}</td><td class="num">${cad.format(r.cashEnd)}</td><td>${[r.machineDown ? `<span class="chip crit">down: ${r.machineDown}</span>` : "", r.event ? `<span class="chip ok">local event</span>` : ""].join(" ")}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ---------------------------------------------------------------- new game
+  function fillDialog() {
+    const sc = S.sim.sc, ls = $("ng-loc"), ms = $("ng-mach");
+    ls.replaceChildren(); Object.values(sc.locations).forEach((l) => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; ls.appendChild(o); });
+    ms.replaceChildren(); Object.values(sc.machines).forEach((m) => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; ms.appendChild(o); });
+    ls.value = sc.location.id; ms.value = sc.machine.id;
+    $("ng-date").value = sc.startDate; $("ng-cash").value = sc.startingCash; $("ng-seed").value = Math.floor(Math.random() * 1e6);
+    const descL = () => { const l = sc.locations[ls.value]; $("ng-loc-desc").textContent = `${l.description} About ${l.baseFootfall.toLocaleString("en-CA")} pass a day; rent ${cad.format(l.monthlyRent)}/month${l.commissionRate ? `, host takes ${Math.round(l.commissionRate * 100)}% of net` : ""}.`; };
+    const descM = () => { const m = sc.machines[ms.value]; $("ng-mach-desc").textContent = `${m.slots} slots × ${m.depth} deep, ${m.refrigerated ? "refrigerated" : "no fridge (no cold drinks or fresh food)"}, lease ${cad.format(m.monthlyLease)}/month, power ${cad.format(m.electricityDaily)}/day.`; };
+    ls.onchange = descL; ms.onchange = descM; descL(); descM();
+  }
+  $("newgame").addEventListener("click", () => { fillDialog(); $("dlg").showModal(); });
+  $("ng-cancel").addEventListener("click", () => $("dlg").close());
+  $("ng-start").addEventListener("click", () => {
+    newGame({ location: $("ng-loc").value, machine: $("ng-mach").value, start_date: $("ng-date").value || DATA["scenario-default"].start_date,
+              starting_cash: Number($("ng-cash").value) || DATA["scenario-default"].starting_cash, seed: Number($("ng-seed").value) || 1 }, $("ng-starter").checked);
+    $("dlg").close(); renderAll(); save();
+  });
+
+  function renderAll() { renderStatus(); renderGrid(); renderEditor(); renderPending(); renderResults(); renderLog(); }
+
+  if (!load()) newGame({}, true);
+  renderAll();
+})();
+</script>

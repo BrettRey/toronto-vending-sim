@@ -6,7 +6,13 @@ A turn-based simulation of running one vending machine on a Toronto street. You 
 
 Every parameter under `data/` was written from general impressions so the game would run. Footfall, stop rates, wholesale costs, retail prices, shelf lives, rents, lease and electricity costs, breakdown rates, and the climate table are all guesses. Each data file says so in its `_provenance` field, and `notes/source-verification.md` lists what would have to be read to calibrate each group. Don't quote a result from this simulation as a fact about vending in Toronto.
 
-## Quick start
+## Play it in the browser
+
+Open `web/index.html` in any browser, or use the hosted copy linked from `STATUS.md`. The machine is drawn as a grid of slots. Click a slot to choose a product, price, and fill level; queue as many changes as you like; then make the visit and run a day or a week. Cash, units sold, and a by-product table update as you go, and progress is saved in the browser.
+
+The page is self-contained: `web/engine.js` is a JavaScript port of the Python engine and the data files are embedded at build time by `scripts/build_web.py` (`make web`). A test fails if the page falls behind the data. The two engines share mechanics and data but not a random number generator, so a seed in one doesn't reproduce a run in the other.
+
+## Command line
 
 Python 3.10 or later, standard library only.
 
@@ -59,7 +65,8 @@ Each run writes `ledger.csv` (one row per day), `summary.json`, `summary.txt`, a
 data/           catalogue, locations, machines, climate, default scenario (all placeholder values)
 plans/          scripted operator plans
 vendsim/        the engine: model.py (loaders), sim.py (the day step), report.py, cli.py
-tests/          unittest invariants: determinism, cash reconciliation, unit conservation, spoilage
+web/            template.html + engine.js -> index.html (built by scripts/build_web.py)
+tests/          Python and JavaScript engine invariants, plus a freshness check on the built page
 notes/          project brief, model spec, source-verification queue
 runs/           run outputs (ignored by git)
 ```

@@ -1,0 +1,891 @@
+<title>Sidewalk Vend</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #eef1f5; --panel: #ffffff; --panel-2: #f6f8fb; --line: #d7dde6; --line-2: #e6ebf1;
+    --ink: #16202e; --muted: #5b6675; --faint: #8c96a5;
+    --accent: #1e4fa3; --accent-ink: #ffffff; --accent-soft: #e4ecf9;
+    --good: #1f7a3f; --warn: #b7791f; --warn-soft: #fbf1dc; --crit: #c0392b; --crit-soft: #fae3df;
+    --series-cash: #2a78d6; --series-units: #1baf7a;
+    /* the machine keeps its own colours in both themes */
+    --bezel: #262b36; --bezel-2: #323847; --bezel-ink: #f3f5f8; --bezel-muted: #aab2c0;
+    --window: #fff6e3; --window-ink: #26221a; --window-muted: #8a8272; --tile: #ffffff; --tile-line: #e3d9c3; --tile-empty: #f7efdc;
+    --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #131821; --panel: #1b222e; --panel-2: #212a38; --line: #303a4a; --line-2: #283142;
+      --ink: #e8ecf2; --muted: #97a2b2; --faint: #6f7a8a;
+      --accent: #6fa0f0; --accent-ink: #0f1a2e; --accent-soft: #24344f;
+      --good: #4cc27a; --warn: #e0a83a; --warn-soft: #3a2f16; --crit: #ee6b5c; --crit-soft: #3d1f1b;
+      --series-cash: #3987e5; --series-units: #199e70;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #131821; --panel: #1b222e; --panel-2: #212a38; --line: #303a4a; --line-2: #283142;
+    --ink: #e8ecf2; --muted: #97a2b2; --faint: #6f7a8a;
+    --accent: #6fa0f0; --accent-ink: #0f1a2e; --accent-soft: #24344f;
+    --good: #4cc27a; --warn: #e0a83a; --warn-soft: #3a2f16; --crit: #ee6b5c; --crit-soft: #3d1f1b;
+    --series-cash: #3987e5; --series-units: #199e70;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+  button, input, select { font: inherit; color: inherit; }
+  h1, h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
+  h2 { font-size: 19px; font-weight: 600; letter-spacing: 0.01em; text-transform: uppercase; color: var(--muted); }
+  a { color: var(--accent); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---- top bar */
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: 14px 22px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand h1 { font-size: 30px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1; }
+  .brand .sub { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; flex: 1; }
+  .strip .lab { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .strip .val { font-family: var(--display); font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .strip .val.num { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+  .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.crit { background: var(--crit-soft); color: var(--crit); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); cursor: pointer; font-weight: 500; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.small { padding: 4px 9px; font-size: 12px; }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+
+  /* ---- layout */
+  .layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(330px, 1fr); gap: 22px; padding: 22px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .panel + .panel { margin-top: 16px; }
+  .panel h2 { margin-bottom: 10px; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .panel-head h2 { margin: 0; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+
+  /* ---- the machine */
+  .machine { background: var(--bezel); border-radius: 12px; padding: 14px 14px 12px; color: var(--bezel-ink); box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+  .marquee { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 2px 4px 12px; }
+  .marquee .name { font-family: var(--display); font-size: 22px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+  .marquee .spec { color: var(--bezel-muted); font-size: 12px; text-align: right; }
+  .window { background: var(--window); color: var(--window-ink); border-radius: 8px; padding: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr)); gap: 8px; }
+  .slot { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 7px 7px 6px; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 5px; text-align: left; cursor: pointer; color: var(--window-ink); }
+  .slot:hover { border-color: var(--accent); }
+  .slot.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .slot .code { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.04em; color: var(--window-muted); }
+  .slot .pname { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .price { font-family: var(--mono); font-size: 12px; }
+  .slot .fill { height: 5px; background: var(--tile-empty); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+  .slot .fill i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .slot .units { font-family: var(--mono); font-size: 11px; color: var(--window-muted); }
+  .slot.empty { background: var(--tile-empty); border-style: dashed; }
+  .slot.empty .pname { color: var(--window-muted); font-style: italic; }
+  .slot.out .fill i { background: var(--crit); }
+  .slot.out .units { color: var(--crit); font-weight: 500; }
+  .slot.low .fill i { background: var(--warn); }
+  .slot .flag { position: absolute; top: 5px; right: 6px; font-family: var(--display); font-weight: 700; font-size: 12px; padding: 0 5px; border-radius: 3px; }
+  .slot .flag.exp { background: var(--warn); color: #fff; }
+  .slot .flag.q { background: var(--accent); color: #fff; }
+  .slot.queued { box-shadow: inset 0 0 0 2px var(--accent-soft); }
+  .keyrow { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px 4px 0; color: var(--bezel-muted); font-size: 12px; }
+  .keyrow b { color: var(--bezel-ink); font-weight: 600; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+
+  /* ---- editor */
+  .field { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+  .field label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .field select, .field input { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+  .field input.num { text-align: right; }
+  .pinfo { grid-column: 2; font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .pending-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pending-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; background: var(--panel-2); border-radius: 4px; font-size: 13px; }
+  .pending-list .code { font-family: var(--display); font-weight: 700; letter-spacing: 0.04em; margin-right: 6px; color: var(--muted); }
+  .receipt { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--panel-2); font-size: 12.5px; color: var(--muted); }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+  /* ---- results */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .kpi { padding: 8px 10px; background: var(--panel-2); border-radius: var(--radius); }
+  .kpi .lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .kpi .val { font-family: var(--mono); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .kpi .val.pos { color: var(--good); } .kpi .val.neg { color: var(--crit); }
+  .chart { position: relative; margin-top: 8px; }
+  .chart h3 { font-family: var(--body); font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart .tip { position: absolute; pointer-events: none; padding: 5px 8px; background: var(--ink); color: var(--bg); font-size: 12px; border-radius: 4px; white-space: nowrap; transform: translate(-50%, -110%); display: none; }
+  .chart text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+  .chart .grid-line { stroke: var(--line-2); stroke-width: 1; }
+  .chart .empty-note { fill: var(--faint); font-family: var(--body); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 5px 6px; text-align: left; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  .tablewrap { overflow-x: auto; max-height: 300px; overflow-y: auto; }
+  .log { padding: 0 22px 22px; }
+  .log .panel { padding-bottom: 8px; }
+  .note { padding: 0 22px 28px; color: var(--muted); font-size: 12.5px; max-width: 72ch; }
+
+  /* ---- dialog */
+  dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 20px 22px; width: min(560px, 92vw); }
+  dialog::backdrop { background: rgba(10, 14, 22, 0.55); }
+  dialog h2 { color: var(--ink); font-size: 24px; text-transform: none; margin-bottom: 12px; }
+  .opt-desc { grid-column: 2; font-size: 12px; color: var(--muted); }
+</style>
+
+<header class="topbar">
+  <div class="brand"><h1>Sidewalk Vend</h1><span class="sub">One machine, Toronto. A simulation, not a business.</span></div>
+  <div class="strip">
+    <div><span class="lab">Day</span><span class="val" id="s-day">0</span></div>
+    <div><span class="lab">Date</span><span class="val" id="s-date">–</span></div>
+    <div><span class="lab">Weather</span><span class="val" id="s-weather">–</span></div>
+    <div><span class="lab">Cash</span><span class="val num" id="s-cash">$0.00</span></div>
+    <div><span class="lab">Machine</span><span class="val" id="s-machine"></span></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="run1">Run 1 day</button>
+    <button class="btn primary" id="run7">Run 7 days</button>
+    <button class="btn quiet" id="newgame">New game…</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section>
+    <div class="machine">
+      <div class="marquee"><div class="name" id="m-name"></div><div class="spec" id="m-spec"></div></div>
+      <div class="window"><div class="grid" id="grid"></div></div>
+      <div class="keyrow">
+        <span><b>Click a slot</b> to stock or reprice it. Changes are queued until you make the visit.</span>
+        <span><span class="swatch" style="background: var(--accent)"></span>stock level</span>
+        <span><span class="swatch" style="background: var(--warn)"></span>low or expiring</span>
+        <span><span class="swatch" style="background: var(--crit)"></span>sold out</span>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <section class="panel">
+      <div class="panel-head"><h2 id="ed-title">Slot</h2><span class="hint" id="ed-current"></span></div>
+      <div class="field">
+        <label for="ed-product">Product</label>
+        <select id="ed-product"></select>
+        <span class="pinfo" id="ed-pinfo"></span>
+        <label for="ed-price">Price</label>
+        <input class="num" id="ed-price" type="number" step="0.25" min="0.25">
+        <label for="ed-fill">Fill to</label>
+        <input class="num" id="ed-fill" type="number" step="1" min="0">
+      </div>
+      <div class="row">
+        <button class="btn primary" id="ed-queue">Queue this change</button>
+        <button class="btn" id="ed-empty">Empty the slot</button>
+        <span class="hint" id="ed-msg"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Next visit</h2><span class="hint">Trip fee <span class="num" id="v-fee"></span></span></div>
+      <ul class="pending-list" id="pending"></ul>
+      <label class="checkline"><input type="checkbox" id="v-refill"> Top up every stocked slot</label>
+      <div class="row">
+        <button class="btn primary" id="v-go">Make the visit</button>
+        <span class="hint">about <span class="num" id="v-est"></span></span>
+        <button class="btn quiet small" id="v-clear">Discard queue</button>
+      </div>
+      <div class="receipt" id="v-receipt" hidden></div>
+    </section>
+
+    <section class="panel">
+      <h2>Results so far</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="chart" id="c-cash"><h3>Cash on hand, by day</h3><div class="tip"></div></div>
+      <div class="chart" id="c-units"><h3>Units sold, by day</h3><div class="tip"></div></div>
+      <div class="panel-head" style="margin-top:14px"><h2 style="font-size:15px">By product</h2><span class="hint">net after tax; contribution = net − cost of goods</span></div>
+      <div class="tablewrap" id="products"></div>
+    </section>
+  </aside>
+</main>
+
+<section class="log">
+  <div class="panel">
+    <div class="panel-head"><h2>Day log</h2><span class="hint">newest first</span></div>
+    <div class="tablewrap" id="daylog"></div>
+  </div>
+</section>
+
+<p class="note">Every number behind this page (foot traffic, wholesale costs, prices, rents, breakdown rates, the weather table) is a placeholder written to make the game run, not a measurement. Treat results as game outcomes. Source code and the calibration queue: <a href="https://github.com/BrettRey/toronto-vending-sim">BrettRey/toronto-vending-sim</a>. Progress is saved in this browser.</p>
+
+<dialog id="dlg">
+  <h2>New game</h2>
+  <div class="field">
+    <label for="ng-loc">Location</label><select id="ng-loc"></select><span class="opt-desc" id="ng-loc-desc"></span>
+    <label for="ng-mach">Machine</label><select id="ng-mach"></select><span class="opt-desc" id="ng-mach-desc"></span>
+    <label for="ng-date">Start date</label><input id="ng-date" type="date">
+    <label for="ng-cash">Starting cash</label><input class="num" id="ng-cash" type="number" step="100">
+    <label for="ng-seed">Seed</label><input class="num" id="ng-seed" type="number" step="1">
+  </div>
+  <label class="checkline"><input type="checkbox" id="ng-starter" checked> Stock the starter assortment on day 0</label>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" id="ng-cancel">Cancel</button>
+    <button class="btn primary" id="ng-start">Start</button>
+  </div>
+</dialog>
+
+<script>
+const DATA = {"catalogue":{"_provenance":"PLACEHOLDER VALUES. Every number here was written from general impressions, not read from a source. Costs, prices, shelf lives, and appeal weights are guesses to make the simulation run. Calibrate against wholesale price lists and observed vending prices before treating any of them as facts. See notes/source-verification.md.","currency":"CAD","segments":["commuter","student","tourist","resident","nightlife"],"products":[{"id":"cola-355","name":"Cola, 355 ml can","category":"cold-drink","unit_cost":0.55,"default_price":2.5,"shelf_life_days":180,"refrigerate":true,"appeal":{"commuter":1.0,"student":1.1,"tourist":0.9,"resident":0.7,"nightlife":1.3},"weather":{"heat":0.5,"cold":0.0,"rain":0.0}},{"id":"water-500","name":"Still water, 500 ml","category":"cold-drink","unit_cost":0.3,"default_price":2.0,"shelf_life_days":365,"refrigerate":false,"appeal":{"commuter":1.1,"student":1.0,"tourist":1.4,"resident":0.6,"nightlife":0.8},"weather":{"heat":0.8,"cold":0.0,"rain":0.0}},{"id":"sparkling-355","name":"Sparkling water, 355 ml can","category":"cold-drink","unit_cost":0.5,"default_price":2.5,"shelf_life_days":270,"refrigerate":true,"appeal":{"commuter":0.8,"student":0.6,"tourist":0.6,"resident":0.8,"nightlife":0.5},"weather":{"heat":0.6,"cold":0.0,"rain":0.0}},{"id":"iced-coffee-240","name":"Iced coffee, 240 ml can","category":"cold-drink","unit_cost":1.1,"default_price":3.5,"shelf_life_days":240,"refrigerate":true,"appeal":{"commuter":1.2,"student":1.0,"tourist":0.5,"resident":0.5,"nightlife":0.4},"weather":{"heat":0.3,"cold":0.0,"rain":0.0}},{"id":"energy-473","name":"Energy drink, 473 ml can","category":"cold-drink","unit_cost":1.6,"default_price":4.0,"shelf_life_days":270,"refrigerate":true,"appeal":{"commuter":0.6,"student":1.2,"tourist":0.3,"resident":0.3,"nightlife":1.6},"weather":{"heat":0.2,"cold":0.0,"rain":0.0}},{"id":"chips-ketchup-60","name":"Ketchup chips, 60 g","category":"snack","unit_cost":0.7,"default_price":2.25,"shelf_life_days":90,"refrigerate":false,"appeal":{"commuter":0.8,"student":1.2,"tourist":1.3,"resident":0.8,"nightlife":1.4},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"chocolate-bar","name":"Chocolate bar, 50 g","category":"snack","unit_cost":0.85,"default_price":2.25,"shelf_life_days":120,"refrigerate":false,"appeal":{"commuter":1.0,"student":1.1,"tourist":0.9,"resident":0.9,"nightlife":1.0},"weather":{"heat":-0.3,"cold":0.2,"rain":0.0}},{"id":"granola-bar","name":"Granola bar","category":"snack","unit_cost":0.6,"default_price":2.0,"shelf_life_days":150,"refrigerate":false,"appeal":{"commuter":1.1,"student":0.9,"tourist":0.6,"resident":0.8,"nightlife":0.3},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"trail-mix-80","name":"Trail mix, 80 g","category":"snack","unit_cost":1.2,"default_price":3.0,"shelf_life_days":150,"refrigerate":false,"appeal":{"commuter":0.7,"student":0.6,"tourist":0.5,"resident":0.7,"nightlife":0.3},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"gum","name":"Chewing gum, pack","category":"sundry","unit_cost":0.9,"default_price":2.0,"shelf_life_days":365,"refrigerate":false,"appeal":{"commuter":0.6,"student":0.7,"tourist":0.4,"resident":0.4,"nightlife":0.9},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"noodle-cup","name":"Instant noodle cup","category":"snack","unit_cost":0.8,"default_price":2.5,"shelf_life_days":240,"refrigerate":false,"appeal":{"commuter":0.3,"student":1.2,"tourist":0.2,"resident":0.9,"nightlife":0.7},"weather":{"heat":-0.2,"cold":0.4,"rain":0.1}},{"id":"butter-tart","name":"Butter tart (fresh)","category":"fresh","unit_cost":1.5,"default_price":4.0,"shelf_life_days":4,"refrigerate":true,"appeal":{"commuter":0.7,"student":0.6,"tourist":1.5,"resident":0.9,"nightlife":0.6},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"maple-cookies","name":"Maple cream cookies, 6-pack","category":"snack","unit_cost":1.0,"default_price":3.5,"shelf_life_days":180,"refrigerate":false,"appeal":{"commuter":0.3,"student":0.3,"tourist":1.8,"resident":0.3,"nightlife":0.2},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"umbrella-compact","name":"Compact umbrella","category":"sundry","unit_cost":4.0,"default_price":12.0,"shelf_life_days":3650,"refrigerate":false,"max_per_slot":4,"appeal":{"commuter":0.05,"student":0.04,"tourist":0.08,"resident":0.03,"nightlife":0.05},"weather":{"heat":0.0,"cold":0.0,"rain":2.5}},{"id":"usbc-cable","name":"USB-C charging cable","category":"sundry","unit_cost":3.0,"default_price":15.0,"shelf_life_days":3650,"refrigerate":false,"max_per_slot":6,"appeal":{"commuter":0.06,"student":0.08,"tourist":0.08,"resident":0.03,"nightlife":0.07},"weather":{"heat":0.0,"cold":0.0,"rain":0.0}},{"id":"hand-warmers","name":"Hand warmers, pair","category":"sundry","unit_cost":0.6,"default_price":3.0,"shelf_life_days":730,"refrigerate":false,"appeal":{"commuter":0.15,"student":0.12,"tourist":0.2,"resident":0.08,"nightlife":0.15},"weather":{"heat":0.0,"cold":1.2,"rain":0.0}},{"id":"lip-balm","name":"Lip balm","category":"sundry","unit_cost":0.8,"default_price":3.5,"shelf_life_days":730,"refrigerate":false,"appeal":{"commuter":0.12,"student":0.12,"tourist":0.1,"resident":0.1,"nightlife":0.15},"weather":{"heat":0.0,"cold":0.6,"rain":0.0}},{"id":"sunscreen-sachet","name":"Sunscreen sachet","category":"sundry","unit_cost":0.5,"default_price":3.0,"shelf_life_days":540,"refrigerate":false,"appeal":{"commuter":0.05,"student":0.06,"tourist":0.25,"resident":0.06,"nightlife":0.02},"weather":{"heat":1.2,"cold":0.0,"rain":-1.0}}]},"locations":{"_provenance":"PLACEHOLDER VALUES. These are archetypes, not surveyed sites. Footfall, stop rates, segment mixes, rents, and commissions were guessed to give the simulation contrasting choices. The City of Toronto publishes pedestrian counts as open data; use those to calibrate base_footfall before trusting any comparison between locations. Whether a machine may stand on a public sidewalk at all is a bylaw question this file does not answer. See notes/source-verification.md.","notes":{"weekday_profile":"Multipliers Monday..Sunday.","month_profile":"Multipliers January..December (academic terms, tourist season).","stop_rate":"Share of passers-by who stop at a fully stocked, varied machine.","weather_exposure":"0 = fully indoor, 1 = fully exposed to weather.","monthly_rent":"Flat fee to the host or permit holder, CAD per month.","commission_rate":"Share of net sales paid to the host.","vandalism_rate":"Daily probability the machine is put out of service by damage."},"locations":[{"id":"subway-entrance-midtown","name":"Sidewalk outside a midtown subway entrance","description":"High-volume commuter corridor. Weekday peaks, weekend dip, fully exposed to weather.","base_footfall":12000,"weekday_profile":[1.0,1.0,1.0,1.0,1.05,0.7,0.55],"month_profile":[0.9,0.9,0.95,1.0,1.05,1.05,1.0,0.95,1.05,1.05,1.0,0.95],"segment_mix":{"commuter":0.55,"student":0.15,"tourist":0.1,"resident":0.15,"nightlife":0.05},"stop_rate":0.004,"indoor":false,"weather_exposure":1.0,"monthly_rent":400,"commission_rate":0.0,"vandalism_rate":0.01},{"id":"campus-edge","name":"Sidewalk at the edge of a downtown university campus","description":"Student-heavy. Collapses in summer and over the winter break.","base_footfall":8000,"weekday_profile":[1.1,1.1,1.1,1.1,0.9,0.35,0.3],"month_profile":[0.9,1.0,1.0,0.9,0.4,0.35,0.35,0.45,1.0,1.05,1.05,0.6],"segment_mix":{"commuter":0.1,"student":0.7,"tourist":0.05,"resident":0.1,"nightlife":0.05},"stop_rate":0.008,"indoor":false,"weather_exposure":1.0,"monthly_rent":300,"commission_rate":0.0,"vandalism_rate":0.012},{"id":"market-laneway","name":"Laneway beside a bohemian market district","description":"Weekend and evening crowd, many tourists, more damage risk.","base_footfall":4000,"weekday_profile":[0.6,0.6,0.7,0.8,1.0,1.5,1.4],"month_profile":[0.6,0.6,0.7,0.9,1.1,1.3,1.4,1.4,1.2,1.0,0.7,0.7],"segment_mix":{"commuter":0.05,"student":0.15,"tourist":0.35,"resident":0.25,"nightlife":0.2},"stop_rate":0.01,"indoor":false,"weather_exposure":1.0,"monthly_rent":250,"commission_rate":0.0,"vandalism_rate":0.025},{"id":"condo-lobby","name":"Lobby of a large downtown condo tower","description":"Indoor, residents only, small but steady, host takes a commission.","base_footfall":900,"weekday_profile":[1.0,1.0,1.0,1.0,1.0,1.1,1.1],"month_profile":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],"segment_mix":{"commuter":0.05,"student":0.05,"tourist":0.0,"resident":0.9,"nightlife":0.0},"stop_rate":0.03,"indoor":true,"weather_exposure":0.2,"monthly_rent":0,"commission_rate":0.1,"vandalism_rate":0.001},{"id":"office-lobby","name":"Lobby of a financial-district office tower","description":"Indoor, weekday commuters, dead on weekends, host takes a commission.","base_footfall":3000,"weekday_profile":[1.0,1.05,1.05,1.0,0.85,0.05,0.03],"month_profile":[1.0,1.0,1.0,1.0,1.0,0.95,0.85,0.85,1.0,1.0,1.0,0.8],"segment_mix":{"commuter":0.9,"student":0.02,"tourist":0.03,"resident":0.05,"nightlife":0.0},"stop_rate":0.015,"indoor":true,"weather_exposure":0.1,"monthly_rent":0,"commission_rate":0.12,"vandalism_rate":0.001}]},"machines":{"_provenance":"PLACEHOLDER VALUES. Lease, electricity, card economics, and breakdown rates are guesses. Get quotes from a vending equipment supplier and a payment processor before comparing machine types on cost. See notes/source-verification.md.","notes":{"card_share":"Share of purchases paid by card rather than cash.","card_fee_rate":"Processor fee as a share of the card transaction value.","jam_rate":"Daily probability of a mechanical fault that stops sales until the next visit."},"machines":[{"id":"snack-30","name":"Ambient snack machine, 30 slots","slots":30,"depth":8,"refrigerated":false,"monthly_lease":120,"electricity_daily":0.8,"card_share":0.75,"card_fee_rate":0.035,"jam_rate":0.008},{"id":"combo-40","name":"Refrigerated combo machine, 40 slots","slots":40,"depth":8,"refrigerated":true,"monthly_lease":220,"electricity_daily":2.5,"card_share":0.75,"card_fee_rate":0.035,"jam_rate":0.01}]},"climate":{"_provenance":"APPROXIMATE, FROM MEMORY. Monthly mean temperatures and precipitation-day probabilities are rough recollections of Toronto's climate, not values read from Environment and Climate Change Canada's published normals. Replace with the official station normals before using this for anything but play. See notes/source-verification.md.","month_mean_temp_c":[-4,-3,1,8,14,19,22,21,17,10,4,-1],"daily_temp_sd_c":5.0,"precip_day_prob":[0.4,0.35,0.38,0.38,0.38,0.35,0.33,0.33,0.35,0.38,0.42,0.42]},"scenario-default":{"_provenance":"Scenario-level parameters are assumptions chosen to make a 90-day game interesting. Sales tax is set to Ontario's 13% HST; whether that is the right treatment for vending sales is unverified.","name":"default","start_date":"2026-09-14","days":90,"seed":20260909,"location":"subway-entrance-midtown","machine":"combo-40","starting_cash":5000.0,"sales_tax_rate":0.13,"visit_cost":25.0,"jam_repair_cost":40.0,"vandalism_repair_cost":250.0,"local_event_rate":0.03,"local_event_multiplier":2.0,"price_sensitivity":1.5,"outside_option":1.2},"plan":{"_comment":"A first, deliberately unoptimised assortment for the refrigerated 40-slot machine. Weekly refills. Slot 34 holds butter tarts so the spoilage mechanic shows up. Edit freely; this is the file to beat.","scenario":"data/scenario-default.json","refill_every":7,"visits":[{"day":0,"set":{"1":{"product":"cola-355","price":2.5},"2":{"product":"cola-355","price":2.5},"3":{"product":"cola-355","price":2.5},"4":{"product":"cola-355","price":2.5},"5":{"product":"cola-355","price":2.5},"6":{"product":"water-500","price":2.0},"7":{"product":"water-500","price":2.0},"8":{"product":"water-500","price":2.0},"9":{"product":"water-500","price":2.0},"10":{"product":"sparkling-355","price":2.5},"11":{"product":"sparkling-355","price":2.5},"12":{"product":"iced-coffee-240","price":3.5},"13":{"product":"iced-coffee-240","price":3.5},"14":{"product":"iced-coffee-240","price":3.5},"15":{"product":"energy-473","price":4.0},"16":{"product":"energy-473","price":4.0},"17":{"product":"energy-473","price":4.0},"18":{"product":"chips-ketchup-60","price":2.25},"19":{"product":"chips-ketchup-60","price":2.25},"20":{"product":"chips-ketchup-60","price":2.25},"21":{"product":"chips-ketchup-60","price":2.25},"22":{"product":"chocolate-bar","price":2.25},"23":{"product":"chocolate-bar","price":2.25},"24":{"product":"chocolate-bar","price":2.25},"25":{"product":"chocolate-bar","price":2.25},"26":{"product":"granola-bar","price":2.0},"27":{"product":"granola-bar","price":2.0},"28":{"product":"granola-bar","price":2.0},"29":{"product":"trail-mix-80","price":3.0},"30":{"product":"gum","price":2.0},"31":{"product":"noodle-cup","price":2.5},"32":{"product":"noodle-cup","price":2.5},"33":{"product":"maple-cookies","price":3.5},"34":{"product":"butter-tart","price":4.0},"35":{"product":"umbrella-compact","price":12.0},"36":{"product":"usbc-cable","price":15.0},"37":{"product":"hand-warmers","price":3.0},"38":{"product":"lip-balm","price":3.5},"39":{"product":"sunscreen-sachet","price":3.0},"40":{"product":"granola-bar","price":2.0}}}]}};
+/* vendsim engine: JavaScript port of vendsim/sim.py and report.py.
+   Same mechanics and the same data files (injected at build time). The random
+   number generator differs from Python's, so a seed here does not reproduce a
+   Python run; within this page, the same seed always gives the same game.
+   Every number in the data is a placeholder; see notes/source-verification.md. */
+(function (global) {
+  "use strict";
+
+  const SEGMENTS = ["commuter", "student", "tourist", "resident", "nightlife"];
+  const DAYS_PER_MONTH = 365 / 12;
+  const DAY_MS = 86400000;
+
+  // ---------------------------------------------------------------- random
+  function makeRng(seed) {
+    let a = (seed >>> 0) || 1;
+    const rng = {
+      getState() { return a; },
+      setState(s) { a = s >>> 0; },
+      random() {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      },
+      gauss(mu, sigma) {
+        let u = 0, v = 0;
+        while (u === 0) u = rng.random();
+        while (v === 0) v = rng.random();
+        return mu + sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      },
+      poisson(lam) {
+        if (lam <= 0) return 0;
+        if (lam > 400) return Math.max(0, Math.round(rng.gauss(lam, Math.sqrt(lam))));
+        const limit = Math.exp(-lam);
+        let k = 0, p = 1;
+        for (;;) { p *= rng.random(); if (p <= limit) return k; k += 1; }
+      },
+    };
+    return rng;
+  }
+
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const round2 = (x) => Math.round(x * 100) / 100;
+
+  // ---------------------------------------------------------------- dates
+  function parseDate(iso) { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); }
+  function addDays(ms, n) { return ms + n * DAY_MS; }
+  function isoDate(ms) { return new Date(ms).toISOString().slice(0, 10); }
+  function weekday(ms) { return (new Date(ms).getUTCDay() + 6) % 7; } // Monday = 0
+  function monthIndex(ms) { return new Date(ms).getUTCMonth(); }
+  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  // ---------------------------------------------------------------- data
+  function normProduct(d) {
+    const appeal = {}; SEGMENTS.forEach((s) => { appeal[s] = Number((d.appeal || {})[s] ?? 1); });
+    const w = d.weather || {};
+    return {
+      id: d.id, name: d.name, category: d.category,
+      unitCost: Number(d.unit_cost), defaultPrice: Number(d.default_price),
+      shelfLifeDays: Number(d.shelf_life_days), refrigerate: Boolean(d.refrigerate),
+      maxPerSlot: d.max_per_slot ? Number(d.max_per_slot) : null,
+      appeal, weather: { heat: Number(w.heat || 0), cold: Number(w.cold || 0), rain: Number(w.rain || 0) },
+    };
+  }
+  function normLocation(d) {
+    const mix = {}; let total = 0;
+    SEGMENTS.forEach((s) => { mix[s] = Number((d.segment_mix || {})[s] || 0); total += mix[s]; });
+    SEGMENTS.forEach((s) => { mix[s] = mix[s] / total; });
+    return {
+      id: d.id, name: d.name, description: d.description || "",
+      baseFootfall: Number(d.base_footfall), weekdayProfile: d.weekday_profile.map(Number),
+      monthProfile: d.month_profile.map(Number), segmentMix: mix, stopRate: Number(d.stop_rate),
+      indoor: Boolean(d.indoor), weatherExposure: Number(d.weather_exposure ?? 1),
+      monthlyRent: Number(d.monthly_rent || 0), commissionRate: Number(d.commission_rate || 0),
+      vandalismRate: Number(d.vandalism_rate || 0),
+    };
+  }
+  function normMachine(d) {
+    return {
+      id: d.id, name: d.name, slots: Number(d.slots), depth: Number(d.depth),
+      refrigerated: Boolean(d.refrigerated), monthlyLease: Number(d.monthly_lease),
+      electricityDaily: Number(d.electricity_daily), cardShare: Number(d.card_share),
+      cardFeeRate: Number(d.card_fee_rate), jamRate: Number(d.jam_rate),
+    };
+  }
+
+  function buildScenario(DATA, overrides) {
+    const raw = Object.assign({}, DATA["scenario-default"], overrides || {});
+    const catalogue = {}; DATA.catalogue.products.forEach((p) => { catalogue[p.id] = normProduct(p); });
+    const locations = {}; DATA.locations.locations.forEach((l) => { locations[l.id] = normLocation(l); });
+    const machines = {}; DATA.machines.machines.forEach((m) => { machines[m.id] = normMachine(m); });
+    if (!locations[raw.location]) throw new Error("unknown location " + raw.location);
+    if (!machines[raw.machine]) throw new Error("unknown machine " + raw.machine);
+    return {
+      name: raw.name, startDate: raw.start_date, days: Number(raw.days), seed: Number(raw.seed),
+      location: locations[raw.location], machine: machines[raw.machine],
+      startingCash: Number(raw.starting_cash), salesTaxRate: Number(raw.sales_tax_rate),
+      visitCost: Number(raw.visit_cost), jamRepairCost: Number(raw.jam_repair_cost),
+      vandalismRepairCost: Number(raw.vandalism_repair_cost), localEventRate: Number(raw.local_event_rate),
+      localEventMultiplier: Number(raw.local_event_multiplier), priceSensitivity: Number(raw.price_sensitivity),
+      outsideOption: Number(raw.outside_option),
+      climate: { means: DATA.climate.month_mean_temp_c.map(Number), sd: Number(DATA.climate.daily_temp_sd_c),
+                 precip: DATA.climate.precip_day_prob.map(Number) },
+      catalogue, locations, machines, overrides: Object.assign({}, overrides || {}),
+    };
+  }
+
+  // ---------------------------------------------------------------- slots
+  function slotUnits(slot) { return slot.lots.reduce((n, l) => n + l.qty, 0); }
+  function soonestExpiry(slot) {
+    let best = null; slot.lots.forEach((l) => { if (l.qty > 0 && (best === null || l.expires < best)) best = l.expires; });
+    return best;
+  }
+
+  // ---------------------------------------------------------------- simulation
+  class Simulation {
+    constructor(scenario, seed) {
+      this.sc = scenario;
+      this.rng = makeRng(seed == null ? scenario.seed : seed);
+      this.day = 0;
+      this.cash = scenario.startingCash;
+      this.slots = []; for (let i = 1; i <= scenario.machine.slots; i++) this.slots.push({ index: i, product: null, price: 0, lots: [] });
+      this.down = "";
+      this.ledger = [];
+      this.visits = [];
+      this.unitsSold = {}; this.revenueByProduct = {}; this.cogsByProduct = {}; this.spoiledByProduct = {};
+      this.stockoutDaysBySlot = {};
+      this.lostStoppers = 0;
+      this._visitToday = { visitCost: 0, purchases: 0, repairs: 0, writeoffs: 0 };
+    }
+
+    get startMs() { return parseDate(this.sc.startDate); }
+    get todayMs() { return addDays(this.startMs, this.day); }
+    get today() { return isoDate(this.todayMs); }
+    dateOfDay(d) { return isoDate(addDays(this.startMs, d)); }
+
+    product(pid) { const p = this.sc.catalogue[pid]; if (!p) throw new Error("unknown product " + pid); return p; }
+    slot(index) { const i = Number(index); if (!(i >= 1 && i <= this.slots.length)) throw new Error("slot " + index + " out of range"); return this.slots[i - 1]; }
+    capacity(product) { const d = this.sc.machine.depth; return product.maxPerSlot ? Math.min(d, product.maxPerSlot) : d; }
+    inStock() { return this.slots.filter((s) => s.product && slotUnits(s) > 0); }
+
+    _clear(slot) {
+      const units = slotUnits(slot), cost = slot.lots.reduce((c, l) => c + l.qty * l.unitCost, 0);
+      slot.lots = []; slot.product = null; slot.price = 0;
+      return { units, cost };
+    }
+    _fill(slot, product, target, receipt) {
+      target = Math.min(target, this.capacity(product));
+      const need = target - slotUnits(slot);
+      if (need <= 0) return;
+      slot.lots.push({ qty: need, expires: this.day + product.shelfLifeDays - 1, unitCost: product.unitCost });
+      receipt.purchases += need * product.unitCost;
+      receipt.unitsAdded[product.id] = (receipt.unitsAdded[product.id] || 0) + need;
+    }
+
+    /* actions: {remove: [slot], set: {slot: {product, price, fill}}, price: {slot: p}, refill: true | [slot]} */
+    applyVisit(actions) {
+      actions = actions || {};
+      const receipt = { day: this.day, date: this.today, visitCost: this.sc.visitCost, repairs: 0, purchases: 0,
+                        writeoffs: 0, unitsAdded: {}, unitsWrittenOff: 0, notes: [] };
+      if (this.down) {
+        const cost = this.down === "jam" ? this.sc.jamRepairCost : this.sc.vandalismRepairCost;
+        receipt.repairs += cost; receipt.notes.push("repaired " + this.down + " for " + cost.toFixed(2)); this.down = "";
+      }
+      (actions.remove || []).forEach((idx) => { const r = this._clear(this.slot(idx)); receipt.writeoffs += r.cost; receipt.unitsWrittenOff += r.units; });
+      Object.entries(actions.set || {}).forEach(([idx, spec]) => {
+        const slot = this.slot(idx), product = this.product(spec.product);
+        if (product.refrigerate && !this.sc.machine.refrigerated) throw new Error(product.name + " needs refrigeration; this machine has none");
+        if (slot.product && slot.product !== product.id) { const r = this._clear(slot); receipt.writeoffs += r.cost; receipt.unitsWrittenOff += r.units; }
+        slot.product = product.id;
+        slot.price = Number(spec.price != null ? spec.price : (slot.price || product.defaultPrice));
+        if (!(slot.price > 0)) throw new Error("slot " + idx + ": price must be positive");
+        const target = spec.fill != null ? Number(spec.fill) : this.capacity(product);
+        this._fill(slot, product, target, receipt);
+      });
+      Object.entries(actions.price || {}).forEach(([idx, price]) => {
+        const slot = this.slot(idx);
+        if (!slot.product) throw new Error("slot " + idx + ": nothing assigned to reprice");
+        if (!(Number(price) > 0)) throw new Error("slot " + idx + ": price must be positive");
+        slot.price = Number(price);
+      });
+      if (actions.refill) {
+        const targets = actions.refill === true ? this.slots : actions.refill.map((i) => this.slot(i));
+        targets.forEach((slot) => { if (slot.product) { const p = this.product(slot.product); this._fill(slot, p, this.capacity(p), receipt); } });
+      }
+      this.cash -= receipt.visitCost + receipt.repairs + receipt.purchases;
+      this._visitToday.visitCost += receipt.visitCost; this._visitToday.purchases += receipt.purchases;
+      this._visitToday.repairs += receipt.repairs; this._visitToday.writeoffs += receipt.writeoffs;
+      this.visits.push(receipt);
+      return receipt;
+    }
+
+    score(product, price, segment, temp, precip) {
+      const h = clamp((temp - 15) / 10, -2.5, 2);
+      const w = product.weather, ex = this.sc.location.weatherExposure;
+      const weatherMult = Math.exp(ex * (w.heat * Math.max(h, 0) + w.cold * Math.max(-h, 0) + w.rain * (precip ? 1 : 0)));
+      const priceMult = Math.exp(-this.sc.priceSensitivity * (price / product.defaultPrice - 1));
+      return product.appeal[segment] * weatherMult * priceMult;
+    }
+    _drawSegment() {
+      const r = this.rng.random(); let acc = 0;
+      for (const s of SEGMENTS) { acc += this.sc.location.segmentMix[s]; if (r < acc) return s; }
+      return SEGMENTS[SEGMENTS.length - 1];
+    }
+    _choose(segment, temp, precip) {
+      const options = new Map();
+      for (const slot of this.inStock()) {
+        const p = this.product(slot.product);
+        const cur = options.get(p.id);
+        if (!cur) options.set(p.id, { score: this.score(p, slot.price, segment, temp, precip), slot });
+        else if (soonestExpiry(slot) < soonestExpiry(cur.slot)) cur.slot = slot;
+      }
+      if (options.size === 0) return null;
+      let total = this.sc.outsideOption; options.forEach((o) => { total += o.score; });
+      const r = this.rng.random() * total; let acc = 0;
+      for (const o of options.values()) { acc += o.score; if (r < acc) return o.slot; }
+      return null;
+    }
+
+    step() {
+      const sc = this.sc, loc = sc.location, machine = sc.machine;
+      const m = monthIndex(this.todayMs), dow = weekday(this.todayMs);
+      const temp = this.rng.gauss(sc.climate.means[m], sc.climate.sd);
+      const precip = this.rng.random() < sc.climate.precip[m];
+
+      let mult = 1; const ex = loc.weatherExposure;
+      if (precip) mult *= 1 - 0.15 * ex;
+      if (temp < 0) mult *= 1 - 0.02 * ex * Math.min(-temp, 15);
+      if (temp > 28) mult *= 1 - 0.01 * ex * Math.min(temp - 28, 10);
+      mult *= Math.exp(this.rng.gauss(0, 0.12));
+      const event = this.rng.random() < sc.localEventRate;
+      if (event) mult *= sc.localEventMultiplier;
+      const footfall = Math.max(0, Math.round(loc.baseFootfall * loc.weekdayProfile[dow] * loc.monthProfile[m] * mult));
+
+      if (!this.down) {
+        if (this.rng.random() < machine.jamRate) this.down = "jam";
+        else if (this.rng.random() < loc.vandalismRate) this.down = "vandalism";
+      }
+      const distinct = new Set(this.inStock().map((s) => s.product)).size;
+      const variety = distinct === 0 ? 0 : 0.5 + 0.5 * Math.min(distinct, 10) / 10;
+      const stoppers = this.down ? 0 : this.rng.poisson(footfall * loc.stopRate * variety);
+
+      let buyers = 0, units = 0, gross = 0, cogs = 0, cardFees = 0;
+      for (let i = 0; i < stoppers; i++) {
+        const slot = this._choose(this._drawSegment(), temp, precip);
+        if (!slot) { this.lostStoppers += 1; continue; }
+        const live = slot.lots.filter((l) => l.qty > 0);
+        const lot = live.reduce((a, b) => (b.expires < a.expires ? b : a));
+        lot.qty -= 1;
+        buyers += 1; units += 1; gross += slot.price; cogs += lot.unitCost;
+        if (this.rng.random() < machine.cardShare) cardFees += slot.price * machine.cardFeeRate;
+        this.unitsSold[slot.product] = (this.unitsSold[slot.product] || 0) + 1;
+        this.revenueByProduct[slot.product] = (this.revenueByProduct[slot.product] || 0) + slot.price;
+        this.cogsByProduct[slot.product] = (this.cogsByProduct[slot.product] || 0) + lot.unitCost;
+      }
+      const net = gross / (1 + sc.salesTaxRate), tax = gross - net;
+      const commission = net * loc.commissionRate;
+      const rent = loc.monthlyRent / DAYS_PER_MONTH, lease = machine.monthlyLease / DAYS_PER_MONTH;
+      const electricity = machine.electricityDaily;
+
+      let spoilUnits = 0, spoilCost = 0, stockouts = 0;
+      for (const slot of this.slots) {
+        if (!slot.product) continue;
+        const gone = slot.lots.filter((l) => l.expires <= this.day && l.qty > 0);
+        if (gone.length) {
+          const u = gone.reduce((n, l) => n + l.qty, 0);
+          spoilUnits += u; spoilCost += gone.reduce((c, l) => c + l.qty * l.unitCost, 0);
+          this.spoiledByProduct[slot.product] = (this.spoiledByProduct[slot.product] || 0) + u;
+        }
+        slot.lots = slot.lots.filter((l) => l.expires > this.day && l.qty > 0);
+        if (slotUnits(slot) === 0) { stockouts += 1; this.stockoutDaysBySlot[slot.index] = (this.stockoutDaysBySlot[slot.index] || 0) + 1; }
+      }
+      const running = net - cardFees - commission - rent - lease - electricity;
+      this.cash += running;
+      const v = this._visitToday;
+      const rec = {
+        day: this.day, date: this.today, weekday: DOW[dow], tempC: Math.round(temp * 10) / 10, precip, event,
+        machineDown: this.down, footfall, stoppers, buyers, units,
+        grossSales: round2(gross), salesTax: round2(tax), netSales: round2(net), cogs: round2(cogs),
+        cardFees: round2(cardFees), commission: round2(commission), rent: round2(rent), lease: round2(lease),
+        electricity: round2(electricity), visitCost: round2(v.visitCost), purchases: round2(v.purchases),
+        repairs: round2(v.repairs), writeoffs: round2(v.writeoffs), spoilageUnits: spoilUnits,
+        spoilageCost: round2(spoilCost), stockoutSlots: stockouts,
+        cashChange: round2(running - v.visitCost - v.purchases - v.repairs), cashEnd: round2(this.cash),
+      };
+      this.ledger.push(rec);
+      this._visitToday = { visitCost: 0, purchases: 0, repairs: 0, writeoffs: 0 };
+      this.day += 1;
+      return rec;
+    }
+    run(n) { const out = []; for (let i = 0; i < n; i++) out.push(this.step()); return out; }
+
+    stockTable() {
+      return this.slots.map((s) => {
+        if (!s.product) return { slot: s.index, product: "", name: "(empty)", price: 0, units: 0, capacity: this.sc.machine.depth, lastDay: null };
+        const p = this.product(s.product), e = soonestExpiry(s);
+        return { slot: s.index, product: p.id, name: p.name, price: s.price, units: slotUnits(s), capacity: this.capacity(p),
+                 lastDay: e === null ? null : e };
+      });
+    }
+    stockAtCost() { return this.slots.reduce((c, s) => c + s.lots.reduce((cc, l) => cc + l.qty * l.unitCost, 0), 0); }
+
+    summarize() {
+      const L = this.ledger, days = L.length;
+      const tot = (k) => round2(L.reduce((a, r) => a + r[k], 0));
+      const products = [];
+      for (const [pid, p] of Object.entries(this.sc.catalogue)) {
+        const units = this.unitsSold[pid] || 0, spoiled = this.spoiledByProduct[pid] || 0;
+        if (!units && !spoiled) continue;
+        const revenue = this.revenueByProduct[pid] || 0, net = revenue / (1 + this.sc.salesTaxRate), cogs = this.cogsByProduct[pid] || 0;
+        products.push({ product: pid, name: p.name, units, gross: round2(revenue), net: round2(net), cogs: round2(cogs),
+                        contribution: round2(net - cogs), spoiledUnits: spoiled, spoiledCost: round2(spoiled * p.unitCost) });
+      }
+      products.sort((a, b) => b.contribution - a.contribution);
+      const worst = Object.entries(this.stockoutDaysBySlot).map(([s, d]) => ({ slot: Number(s), days: d }))
+        .sort((a, b) => b.days - a.days).slice(0, 5);
+      return {
+        scenario: this.sc.name, location: this.sc.location.id, machine: this.sc.machine.id, days,
+        startDate: days ? L[0].date : this.sc.startDate, endDate: days ? L[days - 1].date : "",
+        startingCash: round2(this.sc.startingCash), finalCash: round2(this.cash), profit: round2(this.cash - this.sc.startingCash),
+        stockOnHandAtCost: round2(this.stockAtCost()), visits: this.visits.length,
+        daysDown: L.filter((r) => r.machineDown).length,
+        units: tot("units"), grossSales: tot("grossSales"), netSales: tot("netSales"), cogs: tot("cogs"),
+        cardFees: tot("cardFees"), commission: tot("commission"), rent: tot("rent"), lease: tot("lease"),
+        electricity: tot("electricity"), visitCosts: tot("visitCost"), purchases: tot("purchases"), repairs: tot("repairs"),
+        writeoffs: tot("writeoffs"), spoilageUnits: tot("spoilageUnits"), spoilageCost: tot("spoilageCost"),
+        stoppers: tot("stoppers"), buyers: tot("buyers"), lostStoppers: this.lostStoppers,
+        avgUnitsPerDay: days ? Math.round(tot("units") / days * 10) / 10 : 0,
+        products, stockoutTop: worst,
+      };
+    }
+
+    toJSON() {
+      return {
+        version: 1, overrides: this.sc.overrides, seed: this.sc.seed, rng: this.rng.getState(), day: this.day, cash: this.cash,
+        slots: this.slots, down: this.down, ledger: this.ledger, visits: this.visits,
+        unitsSold: this.unitsSold, revenueByProduct: this.revenueByProduct, cogsByProduct: this.cogsByProduct,
+        spoiledByProduct: this.spoiledByProduct, stockoutDaysBySlot: this.stockoutDaysBySlot,
+        lostStoppers: this.lostStoppers, visitToday: this._visitToday,
+      };
+    }
+    static fromJSON(DATA, j) {
+      const sc = buildScenario(DATA, Object.assign({}, j.overrides || {}, { seed: j.seed }));
+      const sim = new Simulation(sc, j.seed);
+      sim.rng.setState(j.rng); sim.day = j.day; sim.cash = j.cash; sim.slots = j.slots; sim.down = j.down || "";
+      sim.ledger = j.ledger || []; sim.visits = j.visits || [];
+      sim.unitsSold = j.unitsSold || {}; sim.revenueByProduct = j.revenueByProduct || {}; sim.cogsByProduct = j.cogsByProduct || {};
+      sim.spoiledByProduct = j.spoiledByProduct || {}; sim.stockoutDaysBySlot = j.stockoutDaysBySlot || {};
+      sim.lostStoppers = j.lostStoppers || 0; sim._visitToday = j.visitToday || { visitCost: 0, purchases: 0, repairs: 0, writeoffs: 0 };
+      return sim;
+    }
+  }
+
+  global.VendSim = { SEGMENTS, Simulation, buildScenario, makeRng, slotUnits, soonestExpiry, isoDate, parseDate, addDays, DOW };
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+(function () {
+  "use strict";
+  const V = globalThis.VendSim;
+  const SAVE_KEY = "sidewalk-vend-v1";
+  const cad = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
+  const $ = (id) => document.getElementById(id);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const S = { sim: null, pending: null, selected: 1, lastReceipt: null };
+  const freshPending = () => ({ set: {}, remove: [], refill: false });
+
+  // ---------------------------------------------------------------- helpers
+  function prettyDate(iso) { const [y, m, d] = iso.split("-").map(Number); const dow = V.DOW[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7]; return `${dow} ${d} ${MONTHS[m - 1]} ${y}`; }
+  function cols() { const n = S.sim.sc.machine.slots; return n % 8 === 0 ? 8 : (n % 6 === 0 ? 6 : 8); }
+  function code(index) { const c = cols(); const r = Math.floor((index - 1) / c), k = (index - 1) % c; return String.fromCharCode(65 + r) + (k + 1); }
+  function shortName(p) { return p.name.split(",")[0].replace(/ \(.*\)$/, ""); }
+  function slotUnits(s) { return V.slotUnits(s); }
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ sim: S.sim.toJSON(), pending: S.pending, selected: S.selected, lastReceipt: S.lastReceipt })); } catch (e) { /* storage unavailable; play on */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false;
+      const j = JSON.parse(raw);
+      S.sim = V.Simulation.fromJSON(DATA, j.sim); S.pending = j.pending || freshPending(); S.selected = j.selected || 1; S.lastReceipt = j.lastReceipt || null;
+      return true;
+    } catch (e) { return false; }
+  }
+  function newGame(overrides, starter) {
+    S.sim = new V.Simulation(V.buildScenario(DATA, overrides));
+    S.pending = freshPending(); S.selected = 1; S.lastReceipt = null;
+    if (starter) {
+      const first = DATA.plan.visits.find((v) => v.day === 0) || {};
+      const set = {};
+      Object.entries(first.set || {}).forEach(([k, v]) => { if (Number(k) <= S.sim.sc.machine.slots) { const p = S.sim.sc.catalogue[v.product]; if (p && !(p.refrigerate && !S.sim.sc.machine.refrigerated)) set[k] = v; } });
+      S.lastReceipt = S.sim.applyVisit({ set });
+      S.lastReceipt.starter = true;
+    }
+  }
+
+  // ---------------------------------------------------------------- status
+  function renderStatus() {
+    const sim = S.sim, L = sim.ledger, last = L[L.length - 1];
+    $("s-day").textContent = sim.day;
+    $("s-date").textContent = prettyDate(sim.today);
+    $("s-weather").textContent = last ? `${last.tempC.toFixed(0)} °C${last.precip ? ", wet" : ""}` : "not yet";
+    $("s-cash").textContent = cad.format(sim.cash);
+    const m = $("s-machine");
+    if (sim.down) { m.innerHTML = `<span class="chip crit">Down: ${sim.down}</span>`; }
+    else { const stocked = sim.slots.filter((s) => s.product).length, out = sim.slots.filter((s) => s.product && slotUnits(s) === 0).length;
+      m.innerHTML = out ? `<span class="chip warn">${out} of ${stocked} slots sold out</span>` : `<span class="chip ok">Running</span>`; }
+    $("m-name").textContent = sim.sc.location.name;
+    $("m-spec").textContent = `${sim.sc.machine.name}, ${sim.sc.machine.depth} deep`;
+    $("v-fee").textContent = cad.format(sim.sc.visitCost);
+  }
+
+  // ---------------------------------------------------------------- grid
+  function renderGrid() {
+    const sim = S.sim, grid = $("grid"); grid.style.setProperty("--cols", cols());
+    const rows = sim.stockTable(); const frag = document.createDocumentFragment();
+    rows.forEach((r) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "slot"; b.dataset.slot = r.slot;
+      const q = S.pending.set[r.slot], rm = S.pending.remove.includes(r.slot);
+      let cls = [];
+      if (!r.product) cls.push("empty");
+      else if (r.units === 0) cls.push("out");
+      else if (r.units <= Math.max(1, Math.floor(r.capacity * 0.25))) cls.push("low");
+      if (r.slot === S.selected) cls.push("selected");
+      if (q || rm) cls.push("queued");
+      b.className += " " + cls.join(" ");
+      const expiring = r.lastDay !== null && r.lastDay - sim.day <= 1 && r.units > 0;
+      const pct = r.capacity ? Math.round(100 * r.units / r.capacity) : 0;
+      const label = r.product ? shortName(sim.sc.catalogue[r.product]) : "empty";
+      b.innerHTML = `<span class="code">${code(r.slot)}</span><span class="pname">${label}</span>` +
+        (r.product ? `<span class="price">${cad.format(r.price)}</span><span class="fill"><i style="width:${pct}%"></i></span><span class="units">${r.units}/${r.capacity}</span>` : `<span class="units">${r.capacity} deep</span>`) +
+        (rm ? `<span class="flag q">→ empty</span>` : q ? `<span class="flag q">→ ${shortName(sim.sc.catalogue[q.product])}</span>` : expiring ? `<span class="flag exp" title="last sellable day is today or tomorrow">!</span>` : "");
+      b.title = r.product ? `${r.name}, ${cad.format(r.price)}, ${r.units} of ${r.capacity}` + (r.lastDay !== null ? `, last sellable day ${sim.dateOfDay(r.lastDay)}` : "") : "Empty slot";
+      b.addEventListener("click", () => { S.selected = r.slot; renderGrid(); renderEditor(); save(); });
+      frag.appendChild(b);
+    });
+    grid.replaceChildren(frag);
+  }
+
+  // ---------------------------------------------------------------- editor
+  function productOptions(sel, current) {
+    const cats = {}; Object.values(S.sim.sc.catalogue).forEach((p) => { (cats[p.category] ||= []).push(p); });
+    sel.replaceChildren();
+    Object.entries(cats).forEach(([cat, ps]) => {
+      const g = document.createElement("optgroup"); g.label = cat.replace("-", " ");
+      ps.forEach((p) => { const o = document.createElement("option"); o.value = p.id; o.textContent = `${p.name} · ${cad.format(p.defaultPrice)}`; if (p.refrigerate && !S.sim.sc.machine.refrigerated) { o.disabled = true; o.textContent += " (needs fridge)"; } g.appendChild(o); });
+      sel.appendChild(g);
+    });
+    if (current) sel.value = current;
+    if (!sel.value) { const first = sel.querySelector("option:not([disabled])"); if (first) sel.value = first.value; }
+  }
+  function renderEditor() {
+    const sim = S.sim, slot = sim.slot(S.selected), sel = $("ed-product");
+    $("ed-title").textContent = `Slot ${code(S.selected)}`;
+    const q = S.pending.set[S.selected];
+    $("ed-current").textContent = slot.product ? `now: ${shortName(sim.sc.catalogue[slot.product])}, ${cad.format(slot.price)}, ${slotUnits(slot)} left` : "now: empty";
+    productOptions(sel, q ? q.product : slot.product);
+    const p = sim.sc.catalogue[sel.value];
+    $("ed-price").value = (q ? q.price : (slot.product === sel.value && slot.price ? slot.price : p.defaultPrice)).toFixed(2);
+    $("ed-fill").max = sim.capacity(p); $("ed-fill").value = q && q.fill != null ? q.fill : sim.capacity(p);
+    updatePinfo();
+    $("ed-msg").textContent = "";
+  }
+  function updatePinfo() {
+    const sim = S.sim, p = sim.sc.catalogue[$("ed-product").value]; if (!p) return;
+    $("ed-pinfo").textContent = `cost ${cad.format(p.unitCost)} each · reference price ${cad.format(p.defaultPrice)} · keeps ${p.shelfLifeDays} days · up to ${sim.capacity(p)} per slot${p.refrigerate ? " · needs fridge" : ""}`;
+    $("ed-fill").max = sim.capacity(p);
+  }
+  $("ed-product").addEventListener("change", () => { const p = S.sim.sc.catalogue[$("ed-product").value]; $("ed-price").value = p.defaultPrice.toFixed(2); $("ed-fill").value = S.sim.capacity(p); updatePinfo(); });
+  $("ed-queue").addEventListener("click", () => {
+    const pid = $("ed-product").value, price = Number($("ed-price").value), fill = Number($("ed-fill").value), p = S.sim.sc.catalogue[pid];
+    if (!(price > 0)) { $("ed-msg").textContent = "Price must be above zero."; return; }
+    if (!(fill >= 0 && fill <= S.sim.capacity(p))) { $("ed-msg").textContent = `Fill must be 0 to ${S.sim.capacity(p)}.`; return; }
+    S.pending.set[S.selected] = { product: pid, price, fill };
+    S.pending.remove = S.pending.remove.filter((i) => i !== S.selected);
+    $("ed-msg").textContent = `Queued for ${code(S.selected)}.`;
+    renderGrid(); renderPending(); save();
+  });
+  $("ed-empty").addEventListener("click", () => {
+    delete S.pending.set[S.selected];
+    if (S.sim.slot(S.selected).product && !S.pending.remove.includes(S.selected)) S.pending.remove.push(S.selected);
+    $("ed-msg").textContent = S.sim.slot(S.selected).product ? `${code(S.selected)} will be emptied; leftover stock is written off.` : "Already empty.";
+    renderGrid(); renderPending(); save();
+  });
+
+  // ---------------------------------------------------------------- visit
+  function visitEstimate() {
+    const sim = S.sim; let cost = sim.sc.visitCost;
+    if (sim.down) cost += sim.down === "jam" ? sim.sc.jamRepairCost : sim.sc.vandalismRepairCost;
+    const seen = new Set();
+    Object.entries(S.pending.set).forEach(([k, v]) => { const slot = sim.slot(k), p = sim.sc.catalogue[v.product]; seen.add(Number(k));
+      const have = slot.product === p.id ? slotUnits(slot) : 0; cost += Math.max(0, Math.min(v.fill, sim.capacity(p)) - have) * p.unitCost; });
+    if (S.pending.refill) sim.slots.forEach((slot) => { if (slot.product && !seen.has(slot.index) && !S.pending.remove.includes(slot.index)) { const p = sim.sc.catalogue[slot.product]; cost += Math.max(0, sim.capacity(p) - slotUnits(slot)) * p.unitCost; } });
+    return cost;
+  }
+  function renderPending() {
+    const ul = $("pending"); ul.replaceChildren();
+    const items = [];
+    S.pending.remove.forEach((i) => items.push({ i, text: "empty the slot" }));
+    Object.entries(S.pending.set).forEach(([k, v]) => items.push({ i: Number(k), text: `${shortName(S.sim.sc.catalogue[v.product])} at ${cad.format(v.price)}, fill to ${v.fill}` }));
+    items.sort((a, b) => a.i - b.i);
+    if (!items.length && !S.pending.refill) { const li = document.createElement("li"); li.innerHTML = `<span class="hint">Nothing queued${S.sim.down ? "; the visit will still repair the machine" : ""}.</span>`; ul.appendChild(li); }
+    items.forEach((it) => { const li = document.createElement("li"); li.innerHTML = `<span><span class="code">${code(it.i)}</span>${it.text}</span>`; const x = document.createElement("button"); x.className = "btn quiet small"; x.textContent = "remove"; x.addEventListener("click", () => { delete S.pending.set[it.i]; S.pending.remove = S.pending.remove.filter((n) => n !== it.i); renderGrid(); renderPending(); save(); }); li.appendChild(x); ul.appendChild(li); });
+    $("v-refill").checked = S.pending.refill;
+    $("v-est").textContent = cad.format(visitEstimate());
+    const r = $("v-receipt");
+    if (S.lastReceipt) {
+      const rc = S.lastReceipt, added = Object.values(rc.unitsAdded).reduce((a, b) => a + b, 0);
+      r.hidden = false;
+      r.textContent = `${rc.starter ? "Starter assortment stocked" : "Last visit"} on ${prettyDate(rc.date)}: trip ${cad.format(rc.visitCost)}, stock ${cad.format(rc.purchases)} (${added} units)` + (rc.repairs ? `, repairs ${cad.format(rc.repairs)}` : "") + (rc.writeoffs ? `, written off ${cad.format(rc.writeoffs)}` : "") + ".";
+    } else r.hidden = true;
+  }
+  $("v-refill").addEventListener("change", (e) => { S.pending.refill = e.target.checked; renderPending(); save(); });
+  $("v-clear").addEventListener("click", () => { S.pending = freshPending(); renderAll(); save(); });
+  $("v-go").addEventListener("click", () => {
+    try {
+      const actions = { remove: S.pending.remove.slice(), set: Object.assign({}, S.pending.set), refill: S.pending.refill };
+      S.lastReceipt = S.sim.applyVisit(actions); S.pending = freshPending();
+      renderAll(); save();
+    } catch (e) { $("ed-msg").textContent = e.message; }
+  });
+
+  // ---------------------------------------------------------------- run
+  function runDays(n) { for (let i = 0; i < n; i++) S.sim.step(); renderAll(); save(); }
+  $("run1").addEventListener("click", () => runDays(1));
+  $("run7").addEventListener("click", () => runDays(7));
+
+  // ---------------------------------------------------------------- results
+  function kpi(lab, val, cls) { return `<div class="kpi"><div class="lab">${lab}</div><div class="val ${cls || ""}">${val}</div></div>`; }
+  function renderResults() {
+    const sim = S.sim, s = sim.summarize(), L = sim.ledger, last = L[L.length - 1];
+    $("kpis").innerHTML =
+      kpi("Profit so far", (s.profit >= 0 ? "+" : "") + cad.format(s.profit), s.profit > 0 ? "pos" : s.profit < 0 ? "neg" : "") +
+      kpi("Stock on hand, at cost", cad.format(s.stockOnHandAtCost)) +
+      kpi("Units per day", s.days ? s.avgUnitsPerDay : "–") +
+      kpi("Sold today", last ? last.units : "–") +
+      kpi("Walked away", s.lostStoppers) +
+      kpi("Days down", s.daysDown, s.daysDown ? "neg" : "");
+    drawLine($("c-cash"), L.map((r) => r.cashEnd), sim.sc.startingCash, (r) => cad.format(r.cashEnd));
+    drawBars($("c-units"), L.map((r) => r.units), (r) => `${r.units} units`);
+    const t = $("products");
+    if (!s.products.length) { t.innerHTML = `<p class="hint">No sales yet. Make a visit and run some days.</p>`; }
+    else {
+      t.innerHTML = `<table><thead><tr><th>product</th><th class="num">units</th><th class="num">net</th><th class="num">contribution</th><th class="num">spoiled</th></tr></thead><tbody>` +
+        s.products.map((p) => `<tr><td>${shortName(sim.sc.catalogue[p.product])}</td><td class="num">${p.units}</td><td class="num">${cad.format(p.net)}</td><td class="num">${cad.format(p.contribution)}</td><td class="num">${p.spoiledUnits || ""}</td></tr>`).join("") + `</tbody></table>`;
+    }
+  }
+  function niceTicks(lo, hi, n) {
+    if (hi === lo) { hi = lo + 1; }
+    const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), norm = raw / mag;
+    const step = (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * mag;
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(v); return out;
+  }
+  const NS = "http://www.w3.org/2000/svg";
+  function el(name, attrs, text) { const e = document.createElementNS(NS, name); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); if (text != null) e.textContent = text; return e; }
+  function chartFrame(host, values) {
+    const W = 560, H = 170, m = { l: 52, r: 14, t: 10, b: 22 };
+    let svg = host.querySelector("svg"); if (svg) svg.remove();
+    svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }); host.appendChild(svg);
+    if (!values.length) { svg.appendChild(el("text", { x: W / 2, y: H / 2, "text-anchor": "middle", class: "empty-note" }, "No days run yet")); return null; }
+    return { svg, W, H, m, iw: W - m.l - m.r, ih: H - m.t - m.b };
+  }
+  function xLabels(f, n, sim) {
+    const days = Math.max(n - 1, 6); const step = days <= 14 ? 2 : days <= 45 ? 7 : days <= 120 ? 14 : 30;
+    for (let d = 0; d < n; d += step) { const x = f.m.l + f.iw * d / days; const dt = sim.dateOfDay(d).slice(5).split("-"); f.svg.appendChild(el("text", { x, y: f.H - 6, "text-anchor": d === 0 ? "start" : "middle" }, `${Number(dt[1])} ${MONTHS[Number(dt[0]) - 1]}`)); }
+  }
+  function attachHover(host, f, n, xOf, yOf, label) {
+    const tip = host.querySelector(".tip"), svg = f.svg;
+    const cross = el("line", { x1: 0, x2: 0, y1: f.m.t, y2: f.m.t + f.ih, stroke: "var(--faint)", "stroke-width": 1, style: "display:none" }); svg.appendChild(cross);
+    const dot = el("circle", { r: 4.5, fill: "var(--series-cash)", stroke: "var(--panel)", "stroke-width": 2, style: "display:none" }); svg.appendChild(dot);
+    svg.addEventListener("mousemove", (ev) => {
+      const rect = svg.getBoundingClientRect(); const px = (ev.clientX - rect.left) / rect.width * f.W;
+      const days = Math.max(n - 1, 6); let d = Math.round((px - f.m.l) / f.iw * days); d = Math.max(0, Math.min(n - 1, d));
+      const x = xOf(d), y = yOf(d);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.style.display = "";
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.style.display = "";
+      tip.style.display = "block"; tip.style.left = (x / f.W * rect.width) + "px"; tip.style.top = (y / f.H * rect.height) + "px";
+      tip.textContent = `${S.sim.ledger[d].date}: ${label(S.sim.ledger[d])}`;
+    });
+    svg.addEventListener("mouseleave", () => { cross.style.display = "none"; dot.style.display = "none"; tip.style.display = "none"; });
+  }
+  function drawLine(host, values, baseline, label) {
+    const f = chartFrame(host, values); if (!f) return;
+    const n = values.length, days = Math.max(n - 1, 6);
+    const lo = Math.min(baseline, ...values), hi = Math.max(baseline, ...values), pad = (hi - lo) * 0.08 || 50;
+    const ticks = niceTicks(lo - pad, hi + pad, 3), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const xOf = (d) => f.m.l + f.iw * d / days, yOf = (v) => f.m.t + f.ih * (1 - (v - y0) / (y1 - y0));
+    ticks.forEach((t) => { f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(t), y2: yOf(t), class: "grid-line" })); f.svg.appendChild(el("text", { x: f.m.l - 6, y: yOf(t) + 3, "text-anchor": "end" }, "$" + Math.round(t).toLocaleString("en-CA"))); });
+    f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(baseline), y2: yOf(baseline), stroke: "var(--faint)", "stroke-width": 1 }));
+    f.svg.appendChild(el("text", { x: f.W - f.m.r, y: yOf(baseline) - 3, "text-anchor": "end" }, "start"));
+    const pts = values.map((v, d) => `${xOf(d)},${yOf(v)}`);
+    f.svg.appendChild(el("path", { d: `M${xOf(0)},${yOf(y0)} L${pts.join(" L")} L${xOf(n - 1)},${yOf(y0)} Z`, fill: "var(--series-cash)", "fill-opacity": 0.1 }));
+    f.svg.appendChild(el("polyline", { points: pts.join(" "), fill: "none", stroke: "var(--series-cash)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    f.svg.appendChild(el("circle", { cx: xOf(n - 1), cy: yOf(values[n - 1]), r: 4, fill: "var(--series-cash)", stroke: "var(--panel)", "stroke-width": 2 }));
+    xLabels(f, n, S.sim);
+    attachHover(host, f, n, xOf, (d) => yOf(values[d]), label);
+  }
+  function drawBars(host, values, label) {
+    const f = chartFrame(host, values); if (!f) return;
+    const n = values.length, days = Math.max(n - 1, 6);
+    const ticks = niceTicks(0, Math.max(...values, 5) * 1.1, 3), y1 = ticks[ticks.length - 1];
+    const yOf = (v) => f.m.t + f.ih * (1 - v / y1), xOf = (d) => f.m.l + f.iw * d / days;
+    ticks.forEach((t) => { f.svg.appendChild(el("line", { x1: f.m.l, x2: f.W - f.m.r, y1: yOf(t), y2: yOf(t), class: "grid-line" })); f.svg.appendChild(el("text", { x: f.m.l - 6, y: yOf(t) + 3, "text-anchor": "end" }, Math.round(t))); });
+    const bw = Math.max(2, Math.min(24, f.iw / (days + 1) - 2));
+    values.forEach((v, d) => { const h = yOf(0) - yOf(v); if (h <= 0) return; const r = Math.min(4, bw / 2);
+      f.svg.appendChild(el("path", { d: `M${xOf(d) - bw / 2},${yOf(0)} v${-(h - r)} a${r},${r} 0 0 1 ${r},${-r} h${bw - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${h - r} z`, fill: "var(--series-units)" })); });
+    xLabels(f, n, S.sim);
+    attachHover(host, f, n, xOf, (d) => yOf(values[d]), label);
+  }
+
+  // ---------------------------------------------------------------- log
+  function renderLog() {
+    const L = S.sim.ledger.slice(-14).reverse(), t = $("daylog");
+    if (!L.length) { t.innerHTML = `<p class="hint">Nothing yet. Run a day.</p>`; return; }
+    t.innerHTML = `<table><thead><tr><th>date</th><th class="num">°C</th><th>sky</th><th class="num">passed</th><th class="num">stopped</th><th class="num">sold</th><th class="num">gross</th><th class="num">spoiled</th><th class="num">visit</th><th class="num">cash</th><th>notes</th></tr></thead><tbody>` +
+      L.map((r) => `<tr><td>${r.date} ${r.weekday}</td><td class="num">${r.tempC.toFixed(0)}</td><td>${r.precip ? "wet" : "dry"}</td><td class="num">${r.footfall.toLocaleString("en-CA")}</td><td class="num">${r.stoppers}</td><td class="num">${r.units}</td><td class="num">${cad.format(r.grossSales)}</td><td class="num">${r.spoilageUnits || ""}</td><td class="num">${r.visitCost ? cad.format(r.visitCost + r.purchases + r.repairs) : ""}</td><td class="num">${cad.format(r.cashEnd)}</td><td>${[r.machineDown ? `<span class="chip crit">down: ${r.machineDown}</span>` : "", r.event ? `<span class="chip ok">local event</span>` : ""].join(" ")}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ---------------------------------------------------------------- new game
+  function fillDialog() {
+    const sc = S.sim.sc, ls = $("ng-loc"), ms = $("ng-mach");
+    ls.replaceChildren(); Object.values(sc.locations).forEach((l) => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; ls.appendChild(o); });
+    ms.replaceChildren(); Object.values(sc.machines).forEach((m) => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; ms.appendChild(o); });
+    ls.value = sc.location.id; ms.value = sc.machine.id;
+    $("ng-date").value = sc.startDate; $("ng-cash").value = sc.startingCash; $("ng-seed").value = Math.floor(Math.random() * 1e6);
+    const descL = () => { const l = sc.locations[ls.value]; $("ng-loc-desc").textContent = `${l.description} About ${l.baseFootfall.toLocaleString("en-CA")} pass a day; rent ${cad.format(l.monthlyRent)}/month${l.commissionRate ? `, host takes ${Math.round(l.commissionRate * 100)}% of net` : ""}.`; };
+    const descM = () => { const m = sc.machines[ms.value]; $("ng-mach-desc").textContent = `${m.slots} slots × ${m.depth} deep, ${m.refrigerated ? "refrigerated" : "no fridge (no cold drinks or fresh food)"}, lease ${cad.format(m.monthlyLease)}/month, power ${cad.format(m.electricityDaily)}/day.`; };
+    ls.onchange = descL; ms.onchange = descM; descL(); descM();
+  }
+  $("newgame").addEventListener("click", () => { fillDialog(); $("dlg").showModal(); });
+  $("ng-cancel").addEventListener("click", () => $("dlg").close());
+  $("ng-start").addEventListener("click", () => {
+    newGame({ location: $("ng-loc").value, machine: $("ng-mach").value, start_date: $("ng-date").value || DATA["scenario-default"].start_date,
+              starting_cash: Number($("ng-cash").value) || DATA["scenario-default"].starting_cash, seed: Number($("ng-seed").value) || 1 }, $("ng-starter").checked);
+    $("dlg").close(); renderAll(); save();
+  });
+
+  function renderAll() { renderStatus(); renderGrid(); renderEditor(); renderPending(); renderResults(); renderLog(); }
+
+  if (!load()) newGame({}, true);
+  renderAll();
+})();
+</script>

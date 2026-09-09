@@ -17,3 +17,9 @@
 2026-09-09 — Sidewalk placement is not modelled. Whether a machine may stand on a public sidewalk in Toronto is a bylaw question to look up; each location carries a flat monthly rent as a stand-in for a permit or host fee.
 
 2026-09-09 — Public GitHub under `BrettRey/`, MIT. Reason: portfolio default; nothing private in the repo. Run outputs are gitignored because a plan plus a seed reproduces them.
+
+2026-09-09 — Browser interface added after Brett found the text commands opaque. `web/index.html` is a single self-contained page: `web/engine.js` ports the Python engine, `scripts/build_web.py` embeds the data files and the starter plan. Python stays the reference engine; a change to a mechanic must land in both, with a test in both. Reason: nothing to install or type; the machine as a clickable grid makes the decisions visible.
+
+2026-09-09 — The two engines don't share a random number generator (Python's Mersenne Twister vs a small seeded generator in the page), so a seed reproduces a run within one engine only. Reason: porting Python's generator bit-for-bit isn't worth it for a game; the invariants (cash reconciliation, unit conservation, spoilage, determinism, save and restore) are tested on both sides instead.
+
+2026-09-09 — The page opens with the starter assortment already stocked on day 0 (a $297 outlay), so the first thing Brett sees is a full machine and a "Run 7 days" button. New game offers an empty machine instead. Reason: an empty grid shows nothing about what the tool does.
