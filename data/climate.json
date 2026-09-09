@@ -1,0 +1,6 @@
+{
+  "_provenance": "APPROXIMATE, FROM MEMORY. Monthly mean temperatures and precipitation-day probabilities are rough recollections of Toronto's climate, not values read from Environment and Climate Change Canada's published normals. Replace with the official station normals before using this for anything but play. See notes/source-verification.md.",
+  "month_mean_temp_c": [-4, -3, 1, 8, 14, 19, 22, 21, 17, 10, 4, -1],
+  "daily_temp_sd_c": 5.0,
+  "precip_day_prob": [0.40, 0.35, 0.38, 0.38, 0.38, 0.35, 0.33, 0.33, 0.35, 0.38, 0.42, 0.42]
+}

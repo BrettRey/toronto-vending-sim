@@ -1,0 +1,36 @@
+{
+  "_comment": "A first, deliberately unoptimised assortment for the refrigerated 40-slot machine. Weekly refills. Slot 34 holds butter tarts so the spoilage mechanic shows up. Edit freely; this is the file to beat.",
+  "scenario": "data/scenario-default.json",
+  "refill_every": 7,
+  "visits": [
+    {"day": 0, "set": {
+      "1": {"product": "cola-355", "price": 2.50}, "2": {"product": "cola-355", "price": 2.50},
+      "3": {"product": "cola-355", "price": 2.50}, "4": {"product": "cola-355", "price": 2.50},
+      "5": {"product": "cola-355", "price": 2.50},
+      "6": {"product": "water-500", "price": 2.00}, "7": {"product": "water-500", "price": 2.00},
+      "8": {"product": "water-500", "price": 2.00}, "9": {"product": "water-500", "price": 2.00},
+      "10": {"product": "sparkling-355", "price": 2.50}, "11": {"product": "sparkling-355", "price": 2.50},
+      "12": {"product": "iced-coffee-240", "price": 3.50}, "13": {"product": "iced-coffee-240", "price": 3.50},
+      "14": {"product": "iced-coffee-240", "price": 3.50},
+      "15": {"product": "energy-473", "price": 4.00}, "16": {"product": "energy-473", "price": 4.00},
+      "17": {"product": "energy-473", "price": 4.00},
+      "18": {"product": "chips-ketchup-60", "price": 2.25}, "19": {"product": "chips-ketchup-60", "price": 2.25},
+      "20": {"product": "chips-ketchup-60", "price": 2.25}, "21": {"product": "chips-ketchup-60", "price": 2.25},
+      "22": {"product": "chocolate-bar", "price": 2.25}, "23": {"product": "chocolate-bar", "price": 2.25},
+      "24": {"product": "chocolate-bar", "price": 2.25}, "25": {"product": "chocolate-bar", "price": 2.25},
+      "26": {"product": "granola-bar", "price": 2.00}, "27": {"product": "granola-bar", "price": 2.00},
+      "28": {"product": "granola-bar", "price": 2.00},
+      "29": {"product": "trail-mix-80", "price": 3.00},
+      "30": {"product": "gum", "price": 2.00},
+      "31": {"product": "noodle-cup", "price": 2.50}, "32": {"product": "noodle-cup", "price": 2.50},
+      "33": {"product": "maple-cookies", "price": 3.50},
+      "34": {"product": "butter-tart", "price": 4.00},
+      "35": {"product": "umbrella-compact", "price": 12.00},
+      "36": {"product": "usbc-cable", "price": 15.00},
+      "37": {"product": "hand-warmers", "price": 3.00},
+      "38": {"product": "lip-balm", "price": 3.50},
+      "39": {"product": "sunscreen-sachet", "price": 3.00},
+      "40": {"product": "granola-bar", "price": 2.00}
+    }}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "_provenance": "PLACEHOLDER VALUES. Lease, electricity, card economics, and breakdown rates are guesses. Get quotes from a vending equipment supplier and a payment processor before comparing machine types on cost. See notes/source-verification.md.",
+  "notes": {
+    "card_share": "Share of purchases paid by card rather than cash.",
+    "card_fee_rate": "Processor fee as a share of the card transaction value.",
+    "jam_rate": "Daily probability of a mechanical fault that stops sales until the next visit."
+  },
+  "machines": [
+    {"id": "snack-30", "name": "Ambient snack machine, 30 slots",
+     "slots": 30, "depth": 8, "refrigerated": false,
+     "monthly_lease": 120, "electricity_daily": 0.80,
+     "card_share": 0.75, "card_fee_rate": 0.035, "jam_rate": 0.008},
+    {"id": "combo-40", "name": "Refrigerated combo machine, 40 slots",
+     "slots": 40, "depth": 8, "refrigerated": true,
+     "monthly_lease": 220, "electricity_daily": 2.50,
+     "card_share": 0.75, "card_fee_rate": 0.035, "jam_rate": 0.010}
+  ]
+}
